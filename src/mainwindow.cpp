@@ -1,8 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include <QDebug>
-#include "rs_io.h"
-#include "i2c_adapter.h"
+#include "comport_lin.h"
 #include "wake.h"
 
 
@@ -11,12 +10,25 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     QRegExpValidator *validator = new QRegExpValidator(QRegExp("[0-9a-fA-F ]{1,}"), this);
-    dev = new class Dev;
+    QStringList *sl = new QStringList;
+    *sl << "Name" << "Cmd" << "Data" << "Cycle" << "Start";
+    QCheckBox *ch = new QCheckBox;
+    QToolButton *tb = new QToolButton;
+    tb->setIcon(QIcon(":/Start.ico"));
 
     ui->setupUi(this);
     ui->leWakeData->setValidator(validator);
+    ui->tableWidget->setHorizontalHeaderLabels(*sl);
+    ui->tableWidget->setColumnWidth(0,80);
+    ui->tableWidget->setColumnWidth(1,40);
+    ui->tableWidget->setColumnWidth(2,180);
+    ui->tableWidget->setColumnWidth(3,32);
+    ui->tableWidget->setColumnWidth(4,32);
+    ui->tableWidget->setCellWidget(0,3,ch);
+    ui->tableWidget->setCellWidget(0,4,tb);
 
-    for (int i=0;i<20;i++) if (AccessPort(i)==1)  ui->cbxPort->addItem(QString("COM%1").arg(i));
+    //for (int i=0;i<20;i++) if (AccessPort(i)==1)  ui->cbxPort->addItem(QString("COM%1").arg(i));
+    ui->cbxPort->addItem("/dev/ttyS1");
 }
 
 MainWindow::~MainWindow()
@@ -60,14 +72,12 @@ void MainWindow::Text2Hex(QString s, QByteArray *ba)
 void MainWindow::on_pbConnect_clicked()
 {
   char info[32];
-  int port;
-  bool ok;
   if (!connected)
   {
-    port = ui->cbxPort->currentText().remove(0,3).toInt(&ok,10);
-    if (ok) //OpenPort(port); else return;
-    if (dev->OpenDevice(port) == EXIT_FAILURE){ui->statusBar->showMessage("OpenDevice ERROR", 2000); return;}
-    if(dev->GetInfo(info) == EXIT_FAILURE) {ui->statusBar->showMessage("Get_Info ERROR", 2000); ClosePort(); return;}
+    if (portOpen(ui->cbxPort->currentText().toLocal8Bit()) == EXIT_FAILURE) {ui->statusBar->showMessage("portOpen ERROR", 2000); return;}
+    portSetOptions(115200,0);
+    wake_init(portWrite, portRead);
+//    if(dev->GetInfo(info) == EXIT_FAILURE) {ui->statusBar->showMessage("Get_Info ERROR", 2000); portClose(); return;}
     ui->statusBar->showMessage("On-Line",0);
     ui->statusBar->addPermanentWidget(&info_bar,0);
     info_bar.setText(QString(info));
@@ -78,7 +88,7 @@ void MainWindow::on_pbConnect_clicked()
   }
   else
   {
-    ClosePort();
+    portClose();
     ui->pbConnect->setText("Connect");
     ui->pbConnect->setChecked(false);
     ui->statusBar->showMessage("Disconnected",2000);
@@ -86,6 +96,78 @@ void MainWindow::on_pbConnect_clicked()
     connected = false;
     ui->cbxPort->setEnabled(true);
   }
+}
+
+void MainWindow::show_tx_log(unsigned char * clear_data, int size)
+{
+  unsigned char data[518];
+  int len, i;
+  QString s;
+
+  if (ui->cbxRaw->isChecked())
+  {
+    len = wake_get_tx_raw_buffer(data);
+    s = "<font color=#ff0000>TX: </font>";
+    i = 0;
+    s += QString("<font color=#c0c0c0>%1 </font>").arg(data[i++],2,16,QChar('0')); // FEND
+    if (data[i] & 0x80)
+      s += QString("<font color=black>%1 </font>").arg(data[i++],2,16,QChar('0')); // ADDR
+    s += QString("<font color=#808080>%1 </font>").arg(data[i++],2,16,QChar('0')); // CMD
+    s += QString("<font color=#808080>%1 </font>").arg(data[i++],2,16,QChar('0')); // N
+    s += "<font color=#ff0000>";
+    for(;i<len-1;i++) s += QString("%1 ").arg(data[i],2,16,QChar('0')); // data
+    s += "</font>";
+    s += QString("<font color=#808080>%1 </font>").arg(data[len-1],2,16,QChar('0')); // crc
+  }
+  else
+  {
+    s = "<font color=#ff0000>TX: ";
+    for(i=0;i<size;i++) s += QString("%1 ").arg(clear_data[i],2,16,QChar('0')); // data
+    s += "</font>";
+  }
+  if (ui->cbxASCII->isChecked())
+  {
+    s += "<font color=#0000ff>";
+    for(i=0;i<size;i++) if (clear_data[i]>0x30) s += QChar(clear_data[i]); else s += '.';
+    s += "</font>";
+  }
+  ui->teLog->append(s.toLocal8Bit());
+}
+
+void MainWindow::show_rx_log(unsigned char * clear_data, int size)
+{
+  unsigned char data[518];
+  int len, i;
+  QString s;
+
+  if (ui->cbxRaw->isChecked())
+  {
+    len = wake_get_rx_raw_buffer(data);
+    s = "<font color=green>RX: ";
+    i = 0;
+    s += QString("<font color=#c0c0c0>%1 </font>").arg(data[i++],2,16,QChar('0')); // FEND
+    if (data[i] & 0x80)
+      s += QString("<font color=black>%1 </font>").arg(data[i++],2,16,QChar('0')); // ADDR
+    s += QString("<font color=#808080>%1 </font>").arg(data[i++],2,16,QChar('0')); // CMD
+    s += QString("<font color=#808080>%1 </font>").arg(data[i++],2,16,QChar('0')); // N
+    s += "<font color=green>";
+    for(;i<len-1;i++) s += QString("%1 ").arg(data[i],2,16,QChar('0')); // data
+    s += "</font>";
+    s += QString("<font color=#808080>%1 </font>").arg(data[len-1],2,16,QChar('0')); // crc
+  }
+  else
+  {
+    s = "<font color=green>RX: ";
+    for(i=0;i<size;i++) s += QString("%1 ").arg(clear_data[i],2,16,QChar('0')); // data
+    s += "</font>";
+  }
+  if (ui->cbxASCII->isChecked())
+  {
+    s += "<font color=#0000ff>";
+    for(i=0;i<size;i++) if (clear_data[i]>0x30) s += QChar(clear_data[i]); else s += '.';
+    s += "</font>";
+  }
+  ui->teLog->append(s.toLocal8Bit());
 }
 
 void MainWindow::on_pbSend_clicked()
@@ -98,25 +180,14 @@ void MainWindow::on_pbSend_clicked()
   Text2Hex(ui->leWakeData->text(), &ba);
   if (wake_tx_frame(ui->hsbAddr->value(), ui->hsbCmd->value(), ba.size(), (unsigned char *)ba.constData()) < 0)
     {ui->teLog->append("wake_tx_frame error"); return;}
-  len = wake_get_tx_buffer(data);
-  s = "<font color=#ff0000>TX: </font>";
-  s += QString("<font color=#c0c0c0>%1 </font>").arg(data[0],2,16,QChar('0')); // FEND
-  s += QString("<font color=#808080>%1 </font>").arg(data[1],2,16,QChar('0')); // ADDR or CMD
-  s += QString("<font color=#808080>%1 </font>").arg(data[2],2,16,QChar('0')); // N
-  s += "<font color=#ff0000>";
-  // todo: show byte stuffing, move to other function
-  for(int i=3;i<len-1;i++) s += QString("%1 ").arg(data[i],2,16,QChar('0')); // data
-  s += "</font>";
-  s += QString("<font color=#808080>%1 </font>").arg(data[len-1],2,16,QChar('0')); // crc
-  ui->teLog->append(s.toLocal8Bit());
-  if (wake_rx_frame(200, &addr, &cmd, &len, data) < 0) {ui->teLog->append("wake_rx_frame error"); return;}
-  s = "<font color=green>RX: ";
-  for(int i=0;i<len;i++) s += QString("%1 ").arg(data[i],2,16,QChar('0'));
-  s += "</font>";
-  ui->teLog->append(s.toLocal8Bit());
+  show_tx_log((unsigned char *)ba.constData() ,ba.size());
+
+  if (wake_rx_frame(200, &addr, &cmd, &len, data) < 0)
+   {ui->teLog->append("wake_rx_frame error"); return;}
+  show_rx_log(data ,len);
 }
 
-void MainWindow::on_pbI2C_test_clicked()
+void MainWindow::on_btClear_clicked()
 {
-
+  ui->teLog->clear();
 }

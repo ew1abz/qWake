@@ -6,8 +6,6 @@
 #include "wake.h"
 #include <string.h>
 #include <stdlib.h>
-#include "rs_io.h"
-
 
 //---------------------------- Constants: -----------------------------------
 
@@ -29,31 +27,11 @@
 #define ERR_UK   6    //unknown error
 #define MAX_ERR  6
 
-// fo debug only!
-unsigned char buffer_copy[518];
-int real_tx;
-
-//typedef char SSTR[32];
-
-//Errors names:
-//const SSTR ErrorMsg[MAX_ERR + 1] =
-//  { "",
-//    "invalid packet.",
-//    "device busy.",
-//    "device not ready.",
-//    "invalid parameters.",
-//    "device not responding.",
-//    "unknown."
-//  };
-//
-////Special commands names:
-//const SSTR CmdNames[2] =
-//  { "",
-//    "IO error: "
-//  };
-//
-////----------------------------- Variables: ----------------------------------
-//static char LastError[64] = "";     //last error string
+// fo raw info only!
+static unsigned char tx_raw_buffer[518];
+static unsigned char rx_raw_buffer[518];
+static int real_tx;
+static int rx_index;
 
 //---------------------------- Constants: -----------------------------------
 
@@ -63,21 +41,18 @@ int real_tx;
 char *error_str;
 
 const unsigned char
- FEND  = 0xC0,        // Frame END
- FESC  = 0xDB,        // Frame ESCape
- TFEND = 0xDC,        // Transposed Frame END
- TFESC = 0xDD;        // Transposed Frame ESCape
+  FEND  = 0xC0,        // Frame END
+  FESC  = 0xDB,        // Frame ESCape
+  TFEND = 0xDC,        // Transposed Frame END
+  TFESC = 0xDD;        // Transposed Frame ESCape
 
-
-static int (*set_rx_to)(int);
 static int (*tx_buffer)(unsigned char*, int);
-static int (*rx_byte)(unsigned char*);
+static int (*rx_buffer)(unsigned char*, int, int);
 
-void wake_init (int(*f_set_rx_to)(int),  int(*f_tx_buffer)(unsigned char*, int), int (*f_rx_byte)(unsigned char*))
+void wake_init (int (*f_tx_buffer)(unsigned char*, int), int (*f_rx_buffer)(unsigned char*, int, int))
 {
-  set_rx_to = f_set_rx_to;
   tx_buffer = f_tx_buffer;
-  rx_byte = f_rx_byte;
+  rx_buffer = f_rx_buffer;
 }
 
 //------------------------------------------------------------------------------
@@ -121,12 +96,13 @@ static void byte_stuff(unsigned char b, int &bptr, unsigned char *buff)
 ///    \retval -2: rx destuffing data failed
 ///    \retval -3: wrong destuffing data
 ///    \note Don't update error string, because up-level functions rewrite it
-static int wake_rx(unsigned char *b)
+static int wake_rx(unsigned char *b, int timeout)
 {
-  if((*rx_byte)(b)) return(-1);
+  if((*rx_buffer)(b, 1,timeout) != 1) return(-1);
+  rx_raw_buffer[rx_index++] = *b;
   if(*b == FESC)
   {
-    if((*rx_byte)(b)) return(-2);
+    if((*rx_buffer)(b, 1, timeout) !=1) return(-2);
     if(*b == TFEND) *b = FEND;
       else if(*b == TFESC) *b = FESC;
         else return(-3);
@@ -169,15 +145,21 @@ int wake_tx_frame(unsigned char addr, unsigned char cmd, unsigned char need_tx, 
   }
   byte_stuff(crc, index, buff);           // передача CRC
   real_tx = index;
-  memcpy((char*)buffer_copy,(const char *)buff,real_tx);
-  if ((*tx_buffer)(buff, index))  error_return(-1, "ftdidev_tx_buff failed");
+  memcpy((char*)tx_raw_buffer,(const char *)buff,real_tx);
+  if ((*tx_buffer)(buff, index) != index)  error_return(-1, "ftdidev_tx_buff failed");
   return 0;
 }
 
-int wake_get_tx_buffer(unsigned char * buf)
+int wake_get_tx_raw_buffer(unsigned char * buf)
 {
-  memcpy((char*)buf,(const char *)buffer_copy,real_tx);
+  memcpy((char*)buf,(const char *)tx_raw_buffer,real_tx);
   return real_tx;
+}
+
+int wake_get_rx_raw_buffer(unsigned char * buf)
+{
+  memcpy((char*)buf,(const char *)rx_raw_buffer,rx_index);
+  return rx_index;
 }
 
 
@@ -206,34 +188,34 @@ int wake_rx_frame(int to, unsigned char *addr, unsigned char *cmd, unsigned char
   unsigned char data_byte;                 // recieved byte
   unsigned char crc = CRC_INIT;            // crc
 
-  if ((*set_rx_to)(to)) error_return(-1, "ftdidev_set_rx_to failed");      // установка таймаута
-
+  rx_index = 0;
   for (int i = 0; i < 512 && data_byte != FEND; i++)
-    if ((*rx_byte)(&data_byte)) break;
+    if ((*rx_buffer)(&data_byte, 1, to)) break;
   if (data_byte != FEND) error_return(-3, "can't find FEND");
 
+  rx_raw_buffer[rx_index++] = data_byte; // store data for raw info
   do_crc(data_byte, &crc);
-  if (wake_rx(&data_byte)) error_return(-4, "can't rx wake_addr");   // прием адреса
+  if (wake_rx(&data_byte, to)) error_return(-4, "can't rx wake_addr");   // прием адреса
   if (data_byte & 0x80)
   {
     *addr = data_byte & 0x7F;
     do_crc(data_byte & 0x7F, &crc);
-    if (wake_rx(&data_byte)) error_return(-5, "can't rx wake_cmd");  // прием команды
+    if (wake_rx(&data_byte, to)) error_return(-5, "can't rx wake_cmd");  // прием команды
   }
   else *addr = 0;
   *cmd = data_byte;
   do_crc(data_byte, &crc);
-  if (wake_rx(&data_byte)) error_return(-6, "can't rx wake_len");    // прием длины пакета
+  if (wake_rx(&data_byte, to)) error_return(-6, "can't rx wake_len");    // прием длины пакета
   *real_rx = data_byte;
   do_crc(data_byte, &crc);
   for (data_ptr = 0; data_ptr < *real_rx; data_ptr++)
   {
-    if (wake_rx(&data_byte)) error_return(-7, "can't rx wake_data"); // прием данных
+    if (wake_rx(&data_byte, to)) error_return(-7, "can't rx wake_data"); // прием данных
     data[data_ptr] = data_byte;
     do_crc(data_byte, &crc);
   }
   if (data_ptr != *real_rx) error_return(-8, "wrong wake frame len");
-  if (wake_rx(&data_byte)) error_return(-9, "can't rx wake_crc");    // прием CRC
+  if (wake_rx(&data_byte, to)) error_return(-9, "can't rx wake_crc");    // прием CRC
   if (data_byte != crc) error_return(-10, "wrong wake_crc");
   return 0;
 }

@@ -20,13 +20,13 @@ protected:
 private:
     Ui::MainWindow *ui;
     bool connected;
-    class Dev *dev;
     QLabel info_bar;
     void Text2Hex(QString s, QByteArray *ba);
-
+    void show_tx_log(unsigned char * clear_data, int size);
+    void show_rx_log(unsigned char * clear_data, int size);
 
 private slots:
-    void on_pbI2C_test_clicked();
+    void on_btClear_clicked();
     void on_pbConnect_clicked();
     void on_pbSend_clicked();
 };

@@ -4,7 +4,6 @@
 TARGET = bin/qWake
 TEMPLATE = app
 VERSION = 0.0.1
-
 RESOURCES = res/res.qrc
 OBJECTS_DIR = tmp
 UI_DIR = tmp
@@ -13,12 +12,10 @@ RCC_DIR = tmp
 SOURCES += src/main.cpp \
     src/mainwindow.cpp \
     src/wake.cpp \
-    src/rs_io.cpp \
-    src/i2c_adapter.cpp \
-    src/hexspinbox.cpp
+    src/hexspinbox.cpp \
+    src/comport_lin.cpp
 HEADERS += src/mainwindow.h \
     src/wake.h \
-    src/rs_io.h \
-    src/i2c_adapter.h \
-    src/hexspinbox.h
+    src/hexspinbox.h \
+    src/comport_lin.h
 FORMS += src/mainwindow.ui
