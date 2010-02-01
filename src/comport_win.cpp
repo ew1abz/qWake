@@ -88,16 +88,16 @@ bool __fastcall AccessPort(DWORD PortNum)
 
 //----------------- Open COM for non overlapped operations: -----------------
 
-bool __fastcall OpenPort(DWORD PortNum)
+int __fastcall portOpen(const char *portName)
 {
   OSVERSIONINFO Ver;
   Ver.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
   GetVersionEx(&Ver);
   Platform_NT = Ver.dwPlatformId == VER_PLATFORM_WIN32_NT;
 #ifdef __MINGW32__
-  hCom = CreateFileA(GetPortName(PortNum),
+  hCom = CreateFileA(portName,
 #else
-  hCom = CreateFile(GetPortName(PortNum),
+  hCom = CreateFile(portName,
 #endif
                     GENERIC_READ | GENERIC_WRITE,
                     0,
@@ -106,7 +106,7 @@ bool __fastcall OpenPort(DWORD PortNum)
                     0,
                     NULL);
   if (hCom == INVALID_HANDLE_VALUE)
-  { hCom = NULL;   return(0); }           //port open error
+  { hCom = NULL;   return(EXIT_FAILURE); }           //port open error
   if (!Platform_NT)
   {
     //Undocumented function returns the base address in edx
@@ -148,23 +148,22 @@ bool __fastcall OpenPort(DWORD PortNum)
   //dcb.EofChar = ;                       //end of input character
   //dcb.EvtChar = ;                       //received event character
   RtsToggle = 0;
-  if (!SetCommState(hCom, &dcb))       return(0); //set state error
-  if (!SetupComm(hCom, 512, 512))      return(0); //setup error
+  if (!SetCommState(hCom, &dcb))       return(EXIT_FAILURE); //set state error
+  if (!SetupComm(hCom, 512, 512))      return(EXIT_FAILURE); //setup error
   ComTo.ReadIntervalTimeout = MAXDWORD;
   ComTo.ReadTotalTimeoutMultiplier = MAXDWORD;
   ComTo.ReadTotalTimeoutConstant = TIMEOUT;
   ComTo.WriteTotalTimeoutMultiplier = 0;
   ComTo.WriteTotalTimeoutConstant = TIMEOUT;
-  if (!SetCommTimeouts(hCom, &ComTo))  return(0); //set timeouts error
-  if (!PurgePort())                    return(0); //purge com error
-  return(1);
+  if (!SetCommTimeouts(hCom, &ComTo))  return(EXIT_FAILURE); //set timeouts error
+  if (!PurgePort())                    return(EXIT_FAILURE); //purge com error
+  return(EXIT_SUCCESS);
 }
 
 //----------------------------- Set baud rate: ------------------------------
-
-bool __fastcall SetBaud(DWORD Baud)
+int portSetOptions(long rate,char par)
 {
-  dcb.BaudRate = Baud;                    //set boud rate
+  dcb.BaudRate = rate;                   //set baud rate
   return(SetCommState(hCom, &dcb));      //set state
 }
 
@@ -199,6 +198,16 @@ HANDLE __fastcall PortGetHandle(void)
 }
 
 //----------------------------- Close COM: ----------------------------------
+void portClose()
+{
+  if(hCom)
+  {
+    SetCommState(hCom, &dcbc);
+    SetCommTimeouts(hCom, &ComToc);
+    CloseHandle(hCom);
+    hCom = NULL;
+  }
+}
 
 bool __fastcall ClosePort(void)
 {
@@ -224,6 +233,22 @@ bool __fastcall PurgePort(void)
 }
 
 //---------------------------- Transmit buffer: -----------------------------
+int portWrite(unsigned char *buf, int size)
+{
+  DWORD r;
+  if(!Platform_NT && RtsToggle)
+  {
+    EscapeCommFunction(hCom, SETRTS);           //set RTS (not NT systems)
+  }
+  if (WriteFile(hCom, buff, size, &r, NULL)) return EXIT_FAILURE;  //TX frame
+  if(!Platform_NT && RtsToggle)
+  {
+    while(!(PortIn(BaseAddress + 5) & 0x40));
+    EscapeCommFunction(hCom, CLRRTS);           //clear RTS (not NT systems)
+  }
+  if (r != size) return EXIT_FAILURE;
+  else return EXIT_SUCCESS;
+}
 
 int TxBuff(unsigned char *buff, int j)
 {
@@ -242,6 +267,12 @@ int TxBuff(unsigned char *buff, int j)
 }
 
 //------------------------------ Receive byte: ------------------------------
+int portRead(unsigned char *buf, int size, int timeout)
+{
+  DWORD r; bool x;
+  x =  ReadFile(hCom, b, 1, &r, NULL);         //RX byte
+  return(!(x && (r==1)));
+}
 
 int RxByte(unsigned char *b)
 {
