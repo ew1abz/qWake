@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>345</width>
-    <height>503</height>
+    <width>388</width>
+    <height>639</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -24,7 +24,7 @@
        <attribute name="title">
         <string>Port</string>
        </attribute>
-       <layout class="QVBoxLayout" name="verticalLayout_25">
+       <layout class="QVBoxLayout" name="verticalLayout_15">
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_10">
           <item>
@@ -51,9 +51,15 @@
              </widget>
             </item>
             <item>
-             <widget class="QComboBox" name="comboBox">
+             <widget class="QComboBox" name="cbxSpeed">
               <property name="enabled">
+               <bool>true</bool>
+              </property>
+              <property name="editable">
                <bool>false</bool>
+              </property>
+              <property name="currentIndex">
+               <number>7</number>
               </property>
               <item>
                <property name="text">
@@ -299,6 +305,31 @@
           </item>
          </layout>
         </item>
+        <item>
+         <widget class="Line" name="line">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_4">
+          <item>
+           <widget class="QLineEdit" name="lePortData">
+            <property name="toolTip">
+             <string>Try send packet with fake CRC :)</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="pbPortSend">
+            <property name="text">
+             <string>Send</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
        </layout>
       </widget>
       <widget class="QWidget" name="tab_2">
@@ -392,7 +423,7 @@
                <string>...</string>
               </property>
               <property name="icon">
-               <iconset resource="../res/res.qrc">
+               <iconset>
                 <normaloff>:/Start.ico</normaloff>:/Start.ico</iconset>
               </property>
              </widget>
@@ -422,79 +453,126 @@
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_14">
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <layout class="QHBoxLayout" name="horizontalLayout_3"/>
+        </item>
+        <item>
+         <widget class="QTableWidget" name="tableWidget">
+          <property name="alternatingRowColors">
+           <bool>true</bool>
+          </property>
+          <property name="selectionMode">
+           <enum>QAbstractItemView::SingleSelection</enum>
+          </property>
+          <property name="selectionBehavior">
+           <enum>QAbstractItemView::SelectRows</enum>
+          </property>
+          <property name="gridStyle">
+           <enum>Qt::SolidLine</enum>
+          </property>
+          <property name="rowCount">
+           <number>0</number>
+          </property>
+          <property name="columnCount">
+           <number>7</number>
+          </property>
+          <column/>
+          <column/>
+          <column/>
+          <column/>
+          <column/>
+          <column/>
+          <column/>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_5">
           <item>
-           <layout class="QVBoxLayout" name="verticalLayout_12">
-            <item>
-             <widget class="QLabel" name="label_9">
-              <property name="text">
-               <string>Address</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="HexSpinBox" name="hsbAddr_2">
-              <property name="prefix">
-               <string>0x</string>
-              </property>
-              <property name="maximum">
-               <number>255</number>
-              </property>
-              <property name="value">
-               <number>0</number>
-              </property>
-             </widget>
-            </item>
-           </layout>
+           <widget class="QToolButton" name="toolButton_2">
+            <property name="text">
+             <string>Insert</string>
+            </property>
+           </widget>
           </item>
           <item>
-           <layout class="QVBoxLayout" name="verticalLayout_13">
-            <item>
-             <widget class="QLabel" name="label_11">
-              <property name="text">
-               <string>Device Name</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="lineEdit"/>
-            </item>
-           </layout>
+           <widget class="QToolButton" name="toolButton">
+            <property name="text">
+             <string>Add</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QToolButton" name="toolButton_5">
+            <property name="text">
+             <string>Delete</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="QToolButton" name="toolButton_3">
+            <property name="text">
+             <string>Down</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QToolButton" name="toolButton_4">
+            <property name="text">
+             <string>Up</string>
+            </property>
+           </widget>
           </item>
          </layout>
         </item>
         <item>
-         <widget class="QTableWidget" name="tableWidget">
-          <property name="rowCount">
-           <number>2</number>
+         <widget class="Line" name="line_2">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
           </property>
-          <property name="columnCount">
-           <number>5</number>
-          </property>
-          <attribute name="horizontalHeaderVisible">
-           <bool>false</bool>
-          </attribute>
-          <attribute name="horizontalHeaderDefaultSectionSize">
-           <number>100</number>
-          </attribute>
-          <attribute name="verticalHeaderVisible">
-           <bool>false</bool>
-          </attribute>
-          <row/>
-          <row/>
-          <column/>
-          <column/>
-          <column/>
-          <column/>
-          <column/>
          </widget>
         </item>
         <item>
-         <widget class="QToolButton" name="toolButton">
-          <property name="text">
-           <string>Add Command</string>
-          </property>
-         </widget>
+         <layout class="QHBoxLayout" name="horizontalLayout_6">
+          <item>
+           <spacer name="horizontalSpacer_5">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="QToolButton" name="toolButton_6">
+            <property name="text">
+             <string>Batch</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QToolButton" name="toolButton_7">
+            <property name="text">
+             <string>Cycle</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </item>
        </layout>
       </widget>
@@ -521,16 +599,45 @@
       <item>
        <layout class="QVBoxLayout" name="verticalLayout_6">
         <item>
-         <widget class="QCheckBox" name="cbxRaw">
+         <widget class="QLabel" name="label_12">
           <property name="text">
-           <string>Raw</string>
+           <string>Log level</string>
           </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="cbxLogLevel">
+          <item>
+           <property name="text">
+            <string>Full raw</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Raw</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Logic</string>
+           </property>
+          </item>
          </widget>
         </item>
         <item>
          <widget class="QCheckBox" name="cbxASCII">
           <property name="text">
            <string>ASCII</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBox_2">
+          <property name="statusTip">
+           <string>Show all data from port</string>
+          </property>
+          <property name="text">
+           <string>Monitor Mode</string>
           </property>
          </widget>
         </item>
@@ -565,10 +672,30 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>345</width>
-     <height>20</height>
+     <width>388</width>
+     <height>24</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionNew_frameset"/>
+    <addaction name="actionOpen_frameset"/>
+    <addaction name="actionSave_frameset"/>
+    <addaction name="actionSave_frameset_as"/>
+    <addaction name="separator"/>
+    <addaction name="actionExit"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="actionAbout"/>
+    <addaction name="actionAbout_Qt"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuHelp"/>
   </widget>
   <widget class="QToolBar" name="mainToolBar">
    <attribute name="toolBarArea">
@@ -579,6 +706,41 @@
    </attribute>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
+  <action name="actionOpen_frameset">
+   <property name="text">
+    <string>Open frameset</string>
+   </property>
+  </action>
+  <action name="actionSave_frameset">
+   <property name="text">
+    <string>Save frameset</string>
+   </property>
+  </action>
+  <action name="actionSave_frameset_as">
+   <property name="text">
+    <string>Save frameset as...</string>
+   </property>
+  </action>
+  <action name="actionNew_frameset">
+   <property name="text">
+    <string>New frameset</string>
+   </property>
+  </action>
+  <action name="actionExit">
+   <property name="text">
+    <string>Exit</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="text">
+    <string>About</string>
+   </property>
+  </action>
+  <action name="actionAbout_Qt">
+   <property name="text">
+    <string>About Qt</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>
@@ -588,8 +750,6 @@
    <header>../src/hexspinbox.h</header>
   </customwidget>
  </customwidgets>
- <resources>
-  <include location="../res/res.qrc"/>
- </resources>
+ <resources/>
  <connections/>
 </ui>

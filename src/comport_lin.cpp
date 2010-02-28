@@ -84,8 +84,8 @@ int portRead(unsigned char *buf, int size, int timeout)
   FD_ZERO(&fds);
   FD_SET(fd,&fds);
 
-  tv.tv_sec=timeout;
-  tv.tv_usec=0;
+  tv.tv_sec=timeout/1000;
+  tv.tv_usec=timeout - timeout/1000;
 
   rt=select(fd+1,&fds,NULL,NULL,&tv);
   if (rt)

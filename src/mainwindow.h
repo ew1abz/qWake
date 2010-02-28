@@ -24,8 +24,11 @@ private:
     void Text2Hex(QString s, QByteArray *ba);
     void show_tx_log(unsigned char * clear_data, int size);
     void show_rx_log(unsigned char * clear_data, int size);
+    void newRow(int row);
 
 private slots:
+    void on_toolButton_clicked();
+    void on_pbPortSend_clicked();
     void on_btClear_clicked();
     void on_pbConnect_clicked();
     void on_pbSend_clicked();
