@@ -29,6 +29,9 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->lePortData->setValidator(validator);
     //for (int i=0;i<20;i++) if (AccessPort(i)==1)  ui->cbxPort->addItem(QString("COM%1").arg(i));
     ui->cbxPort->addItem("/dev/ttyS1");
+    ui->cbxPort->addItem("COM5");
+    ui->cbxPort->addItem("COM8");
+    ui->cbxPort->addItem("COM9");
 }
 
 MainWindow::~MainWindow()
@@ -147,7 +150,7 @@ void MainWindow::show_tx_log(unsigned char * clear_data, int size)
   if (ui->cbxASCII->isChecked())
   {
     s += "<font color=#0000ff>";
-    for(i=0;i<size;i++) if (clear_data[i]>0x30) s += QChar(clear_data[i]); else s += '.';
+    for(i=0;i<size;i++) if (clear_data[i]>=' ') s += QChar(clear_data[i]); else s += '.';
     s += "</font>";
   }
   ui->teLog->append(s.toLocal8Bit());
@@ -183,7 +186,7 @@ void MainWindow::show_rx_log(unsigned char * clear_data, int size)
   if (ui->cbxASCII->isChecked())
   {
     s += "<font color=#0000ff>";
-    for(i=0;i<size;i++) if (clear_data[i]>0x30) s += QChar(clear_data[i]); else s += '.';
+    for(i=0;i<size;i++) if (clear_data[i]>=' ') s += QChar(clear_data[i]); else s += '.';
     s += "</font>";
   }
   ui->teLog->append(s.toLocal8Bit());
@@ -195,10 +198,11 @@ void MainWindow::on_pbSend_clicked()
   QString s;
   unsigned char addr, cmd, len;
   QByteArray ba;
+  int res;
 
   Text2Hex(ui->leWakeData->text(), &ba);
-  if (wake_tx_frame(ui->hsbAddr->value(), ui->hsbCmd->value(), ba.size(), (unsigned char *)ba.constData()) < 0)
-    {ui->teLog->append("wake_tx_frame error"); return;}
+  if (res = wake_tx_frame(ui->hsbAddr->value(), ui->hsbCmd->value(), ba.size(), (unsigned char *)ba.constData()) < 0)
+    {ui->teLog->append("wake_tx_frame error"); qDebug("%d", res); return;}
   show_tx_log((unsigned char *)ba.constData(), ba.size());
 
   if (wake_rx_frame(200, &addr, &cmd, &len, data) < 0)

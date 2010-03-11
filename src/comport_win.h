@@ -4,12 +4,13 @@
 #include <windows.h>
 
 int portOpen(const char* portName);
-void portSetOptions(long rate,char par);
+int portSetOptions(long rate,char par);
 void portClose();
 const char * portGetError();
 
 int portWrite(unsigned char *buf, int size);
 int portRead(unsigned char *buf, int size, int timeout);
+int PurgePort(void);
 
 #endif
 

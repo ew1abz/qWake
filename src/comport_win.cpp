@@ -1,7 +1,7 @@
 #include <windows.h>
 //#pragma hdrstop
 
-#include "rs_io.h"
+#include "comport_win.h"
 
 //#pragma package(smart_init)
 
@@ -88,7 +88,7 @@ bool __fastcall AccessPort(DWORD PortNum)
 
 //----------------- Open COM for non overlapped operations: -----------------
 
-int __fastcall portOpen(const char *portName)
+int portOpen(const char *portName)
 {
   OSVERSIONINFO Ver;
   Ver.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
@@ -224,7 +224,7 @@ bool __fastcall ClosePort(void)
 
 //------------- Purge COM: terminates TX and RX and clears buffers: ---------
 
-bool __fastcall PurgePort(void)
+int PurgePort(void)
 {
   return(PurgeComm(hCom, PURGE_TXABORT |
                          PURGE_RXABORT |
@@ -240,14 +240,14 @@ int portWrite(unsigned char *buf, int size)
   {
     EscapeCommFunction(hCom, SETRTS);           //set RTS (not NT systems)
   }
-  if (WriteFile(hCom, buff, size, &r, NULL)) return EXIT_FAILURE;  //TX frame
+  if (!WriteFile(hCom, buf, size, &r, NULL)) return -1;  //TX frame
   if(!Platform_NT && RtsToggle)
   {
     while(!(PortIn(BaseAddress + 5) & 0x40));
     EscapeCommFunction(hCom, CLRRTS);           //clear RTS (not NT systems)
   }
-  if (r != size) return EXIT_FAILURE;
-  else return EXIT_SUCCESS;
+  if (r != (unsigned int)size) return -2;
+  else return r;
 }
 
 int TxBuff(unsigned char *buff, int j)
@@ -263,15 +263,15 @@ int TxBuff(unsigned char *buff, int j)
     while(!(PortIn(BaseAddress + 5) & 0x40));
     EscapeCommFunction(hCom, CLRRTS);           //clear RTS (not NT systems)
   }
-  return(!(x && (r == j)));
+  return(!(x && (r == (unsigned int)j)));
 }
 
 //------------------------------ Receive byte: ------------------------------
 int portRead(unsigned char *buf, int size, int timeout)
 {
-  DWORD r; bool x;
-  x =  ReadFile(hCom, b, 1, &r, NULL);         //RX byte
-  return(!(x && (r==1)));
+  DWORD r;
+  if (!ReadFile(hCom, buf, size, &r, NULL)) return -1;         //RX byte
+  return r;
 }
 
 int RxByte(unsigned char *b)
