@@ -27,6 +27,7 @@ private:
     void newRow(int row);
 
 private slots:
+    void on_pbSetSerial_clicked();
     void on_toolButton_clicked();
     void on_pbPortSend_clicked();
     void on_btClear_clicked();

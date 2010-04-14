@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="tab">
        <attribute name="title">
@@ -431,6 +431,23 @@
            </layout>
           </item>
          </layout>
+        </item>
+        <item>
+         <widget class="QSpinBox" name="sbSerial">
+          <property name="maximum">
+           <number>66535</number>
+          </property>
+          <property name="value">
+           <number>6658</number>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pbSetSerial">
+          <property name="text">
+           <string>Set Serial</string>
+          </property>
+         </widget>
         </item>
         <item>
          <spacer name="verticalSpacer_2">

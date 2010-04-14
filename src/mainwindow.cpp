@@ -287,3 +287,39 @@ void MainWindow::on_toolButton_clicked()
 {
   newRow(ui->tableWidget->rowCount());
 }
+
+void MainWindow::on_pbSetSerial_clicked()
+{
+  unsigned char data[518];
+  QString s;
+  unsigned char addr, cmd, len;
+  QByteArray ba = "\xEb\xDA\xDE\xCD";
+  int res;
+
+  on_pbConnect_clicked();
+  ui->teLog->append("Connect");
+
+  ba.append(ui->sbSerial->value() & 0xff);
+  ba.append((ui->sbSerial->value() >> 8 )& 0xff);
+  if (res = wake_tx_frame(0, 5, ba.size(), (unsigned char *)ba.constData()) < 0)
+    {ui->teLog->append("wake_tx_frame error"); qDebug("%d", res); return;}
+  if (wake_rx_frame(200, &addr, &cmd, &len, data) < 0)
+   {ui->teLog->append("wake_rx_frame error"); return;}
+
+  if (data[0] != 0)   {ui->teLog->append("set serial error"); return;}
+
+  ba.clear();
+  if (res = wake_tx_frame(0, 4, ba.size(), (unsigned char *)ba.constData()) < 0)
+    {ui->teLog->append("wake_tx_frame error"); qDebug("%d", res); return;}
+  if (wake_rx_frame(200, &addr, &cmd, &len, data) < 0)
+    {ui->teLog->append("wake_rx_frame error"); return;}
+
+  if ((data[1] != ((ui->sbSerial->value() >> 8) & 0xff)) || (data[0] != (ui->sbSerial->value() & 0xff)))
+    {ui->teLog->append("check serial error"); return;}
+
+  ui->teLog->append("Write and check Ok!");
+  ui->sbSerial->setValue(ui->sbSerial->value()+1);
+
+  on_pbConnect_clicked();
+  ui->teLog->append("Increment serial and disconnect");
+}
