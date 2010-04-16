@@ -3,6 +3,7 @@
 
 #include <QtGui>
 #include "hexspinbox.h"
+#include "qextserialport/qextserialport.h"
 
 namespace Ui {
     class MainWindow;
@@ -13,12 +14,18 @@ class MainWindow : public QMainWindow {
 public:
     MainWindow(QWidget *parent = 0);
     ~MainWindow();
+    int set_rx_to(int to);
+    int tx_buffer(unsigned char* data, int size);
+    int rx_byte (unsigned char* byte);
+    int (MainWindow::*p_set_rx_to)(int);
+
 
 protected:
     void changeEvent(QEvent *e);
 
 private:
     Ui::MainWindow *ui;
+    QextSerialPort *port;
     bool connected;
     QLabel info_bar;
     void Text2Hex(QString s, QByteArray *ba);

@@ -18,7 +18,10 @@ HEADERS += src/mainwindow.h \
     src/hexspinbox.h
 FORMS += src/mainwindow.ui
 
-win32: HEADERS += src/comport_win.h
-win32: SOURCES += src/comport_win.cpp
-unix: HEADERS += src/comport_lin.h
-unix: SOURCES += src/comport_lin.cpp
+#win32: HEADERS += src/comport_win.h
+#win32: SOURCES += src/comport_win.cpp
+#unix: HEADERS += src/comport_lin.h
+#unix: SOURCES += src/comport_lin.cpp
+LIBS    += -lqextserialport
+unix:DEFINES   = _TTY_POSIX_
+win32:DEFINES  = _TTY_WIN_ QWT_DLL QT_DLL

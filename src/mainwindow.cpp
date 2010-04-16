@@ -72,21 +72,49 @@ void MainWindow::Text2Hex(QString s, QByteArray *ba)
       ba->append(intToByteArray(list1.at(i).toInt(&ok, 16)));
 }
 
+int MainWindow::set_rx_to(int to)
+{
+  port->setTimeout(0,to);
+  return 0;
+}
+
+int MainWindow::tx_buffer(unsigned char* data, int size)
+{
+  return port->write((const char*)data,size);
+}
+
+int MainWindow::rx_byte (unsigned char* byte)
+{
+  return port->read((char*)byte,1);
+}
+
 void MainWindow::on_pbConnect_clicked()
 {
-  char info[32];
-  bool ok;
-
   if (!connected)
   {
-    if (portOpen(ui->cbxPort->currentText().toLocal8Bit()) == EXIT_FAILURE)
-      {ui->statusBar->showMessage("portOpen ERROR", 2000); return;}
-    portSetOptions(ui->cbxSpeed->currentText().toInt(&ok,10),0);
-    wake_init(portWrite, portRead);
-//    if(dev->GetInfo(info) == EXIT_FAILURE) {ui->statusBar->showMessage("Get_Info ERROR", 2000); portClose(); return;}
+    port = new QextSerialPort(ui->cbxPort->currentText());
+    if (ui->cbxSpeed->currentText() == "1200") port->setBaudRate(BAUD1200);
+    else if (ui->cbxSpeed->currentText() == "38400") port->setBaudRate(BAUD38400);
+    else if (ui->cbxSpeed->currentText() == "57600") port->setBaudRate(BAUD57600);
+    else if (ui->cbxSpeed->currentText() == "115200") port->setBaudRate(BAUD115200);
+
+    port->setFlowControl(FLOW_OFF);
+    port->setParity(PAR_NONE);
+    port->setDataBits(DATA_8);
+    port->setStopBits(STOP_1);
+    port->setTimeout(0,ui->sbxTimeout->value());
+    port->open(QIODevice::ReadWrite);
+    qDebug("is open: %d", port->isOpen());
+
+    //wake_init(0, 0, 0);
+    //wake_init(this->set_rx_to, 0, rx_byte);
+    //wake_init(set_rx_to, tx_buffer, 0);
+    wake_init(p_set_rx_to, 0, 0);
+
+
     ui->statusBar->showMessage("On-Line",0);
-    ui->statusBar->addPermanentWidget(&info_bar,0);
-    info_bar.setText(QString(info));
+    //ui->statusBar->addPermanentWidget(&info_bar,0);
+    //info_bar.setText(QString(info));
     ui->pbConnect->setChecked(true);
     ui->pbConnect->setText("Disconnect");
     connected = true;
@@ -94,14 +122,42 @@ void MainWindow::on_pbConnect_clicked()
   }
   else
   {
-    portClose();
+    port->close();
     ui->pbConnect->setText("Connect");
     ui->pbConnect->setChecked(false);
     ui->statusBar->showMessage("Disconnected",2000);
-    info_bar.clear();
+    //info_bar.clear();
     connected = false;
     ui->cbxPort->setEnabled(true);
   }
+//  char info[32];
+//  bool ok;
+//
+//  if (!connected)
+//  {
+//    if (portOpen(ui->cbxPort->currentText().toLocal8Bit()) == EXIT_FAILURE)
+//      {ui->statusBar->showMessage("portOpen ERROR", 2000); return;}
+//    portSetOptions(ui->cbxSpeed->currentText().toInt(&ok,10),0);
+//    wake_init(portWrite, portRead);
+////    if(dev->GetInfo(info) == EXIT_FAILURE) {ui->statusBar->showMessage("Get_Info ERROR", 2000); portClose(); return;}
+//    ui->statusBar->showMessage("On-Line",0);
+//    ui->statusBar->addPermanentWidget(&info_bar,0);
+//    info_bar.setText(QString(info));
+//    ui->pbConnect->setChecked(true);
+//    ui->pbConnect->setText("Disconnect");
+//    connected = true;
+//    ui->cbxPort->setEnabled(false);
+//  }
+//  else
+//  {
+//    portClose();
+//    ui->pbConnect->setText("Connect");
+//    ui->pbConnect->setChecked(false);
+//    ui->statusBar->showMessage("Disconnected",2000);
+//    info_bar.clear();
+//    connected = false;
+//    ui->cbxPort->setEnabled(true);
+//  }
 }
 
 void MainWindow::show_tx_log(unsigned char * clear_data, int size)
