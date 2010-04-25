@@ -25,16 +25,17 @@ protected:
 
 private:
     Ui::MainWindow *ui;
+    void writeSettings();
+    void readSettings();
     QextSerialPort *port;
-    bool connected;
+    //bool connected;
     QLabel info_bar;
     void Text2Hex(QString s, QByteArray *ba);
-    void show_tx_log(unsigned char * clear_data, int size);
-    void show_rx_log(unsigned char * clear_data, int size);
+    void show_tx_log(char * clear_data, int size);
+    void show_rx_log(char * clear_data, int size);
     void newRow(int row);
 
 private slots:
-    void on_pbSetSerial_clicked();
     void on_toolButton_clicked();
     void on_pbPortSend_clicked();
     void on_btClear_clicked();

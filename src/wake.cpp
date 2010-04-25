@@ -28,10 +28,11 @@
 #define MAX_ERR  6
 
 // fo raw info only!
-static unsigned char tx_raw_buffer[518];
-static unsigned char rx_raw_buffer[518];
+static char tx_raw_buffer[518];
+static char rx_raw_buffer[518];
 static int real_tx;
 static int rx_index;
+QextSerialPort *port;
 
 //---------------------------- Constants: -----------------------------------
 
@@ -46,13 +47,9 @@ const unsigned char
   TFEND = 0xDC,        // Transposed Frame END
   TFESC = 0xDD;        // Transposed Frame ESCape
 
-static int (*tx_buffer)(unsigned char*, int);
-static int (*rx_buffer)(unsigned char*, int, int);
-
-void wake_init (int (*f_tx_buffer)(unsigned char*, int), int (*f_rx_buffer)(unsigned char*, int, int))
+void wake_init (QextSerialPort *p)
 {
-  tx_buffer = f_tx_buffer;
-  rx_buffer = f_rx_buffer;
+  port = p;
 }
 
 //------------------------------------------------------------------------------
@@ -77,7 +74,7 @@ static void do_crc(unsigned char b, unsigned char *crc)
 ///    \param b Byte to tx
 ///    \param dptr Data pointer
 ///    \param buff Buffer
-static void byte_stuff(unsigned char b, int &bptr, unsigned char *buff)
+static void byte_stuff(unsigned char b, int &bptr, char *buff)
 {
   if ((b == FEND) || (b == FESC))
   {
@@ -96,15 +93,15 @@ static void byte_stuff(unsigned char b, int &bptr, unsigned char *buff)
 ///    \retval -2: rx destuffing data failed
 ///    \retval -3: wrong destuffing data
 ///    \note Don't update error string, because up-level functions rewrite it
-static int wake_rx(unsigned char *b, int timeout)
+static int wake_rx(char *b, int timeout)
 {
-  if((*rx_buffer)(b, 1,timeout) != 1) return(-1);
+  if(port->read(b, 1) != 1) return(-1);
   rx_raw_buffer[rx_index++] = *b;
-  if(*b == FESC)
+  if((unsigned char)*b == FESC)
   {
-    if((*rx_buffer)(b, 1, timeout) !=1) return(-2);
-    if(*b == TFEND) *b = FEND;
-      else if(*b == TFESC) *b = FESC;
+    if(port->read(b, 1) !=1) return(-2);
+    if((unsigned char)*b == TFEND) *b = FEND;
+      else if((unsigned char)*b == TFESC) *b = FESC;
         else return(-3);
   }
   return(0);
@@ -120,9 +117,9 @@ static int wake_rx(unsigned char *b, int timeout)
 ///    \param data
 ///    \retval  0: all fine
 ///    \retval -1: ftdidev_tx_buff failed
-int wake_tx_frame(unsigned char addr, unsigned char cmd, unsigned char need_tx, unsigned char *data)
+int wake_tx_frame(unsigned char addr, unsigned char cmd, unsigned char need_tx, const char *data)
 {
-  unsigned char buff[518];                // буфер для передачи
+  char buff[518];                // буфер для передачи
   int index = 0;                          // указатель буфера
   unsigned char crc = CRC_INIT;           // контрольная сумма
 
@@ -131,7 +128,7 @@ int wake_tx_frame(unsigned char addr, unsigned char cmd, unsigned char need_tx, 
   do_crc(FEND, &crc);
   if(addr)
   {
-    byte_stuff(addr | 0x80, index, buff); // передача адреса
+    byte_stuff((unsigned char)addr | 0x80, index, buff); // передача адреса
     do_crc(addr & 0x7F, &crc);
   }
   byte_stuff(cmd & 0x7F, index, buff);    // передача команды
@@ -146,17 +143,17 @@ int wake_tx_frame(unsigned char addr, unsigned char cmd, unsigned char need_tx, 
   byte_stuff(crc, index, buff);           // передача CRC
   real_tx = index;
   memcpy((char*)tx_raw_buffer,(const char *)buff,real_tx);
-  if ((*tx_buffer)(buff, index) != index)  error_return(-1, "ftdidev_tx_buff failed");
+  if (port->write(buff, index) != index)  error_return(-1, "ftdidev_tx_buff failed");
   return 0;
 }
 
-int wake_get_tx_raw_buffer(unsigned char * buf)
+int wake_get_tx_raw_buffer(char * buf)
 {
   memcpy((char*)buf,(const char *)tx_raw_buffer,real_tx);
   return real_tx;
 }
 
-int wake_get_rx_raw_buffer(unsigned char * buf)
+int wake_get_rx_raw_buffer(char * buf)
 {
   memcpy((char*)buf,(const char *)rx_raw_buffer,rx_index);
   return rx_index;
@@ -182,7 +179,7 @@ int wake_get_rx_raw_buffer(unsigned char * buf)
 ///    \retval  -8: wrong wake frame len
 ///    \retval  -9: can't rx wake_crc
 ///    \retval -10: wrong wake_crc
-int wake_rx_frame(int to, unsigned char *addr, unsigned char *cmd, unsigned char *real_rx, unsigned char *data)
+int wake_rx_frame(int to, unsigned char *addr, unsigned char *cmd, unsigned char *real_rx, char *data)
 {
   int data_ptr;                            // pointer to data buffer
   unsigned char data_byte;                 // recieved byte
@@ -190,32 +187,32 @@ int wake_rx_frame(int to, unsigned char *addr, unsigned char *cmd, unsigned char
 
   rx_index = 0;
   for (int i = 0; i < 512 && data_byte != FEND; i++)
-    if ((*rx_buffer)(&data_byte, 1, to)) break;
+    if (port->read((char*)&data_byte, 1)) break;
   if (data_byte != FEND) error_return(-3, "can't find FEND");
 
   rx_raw_buffer[rx_index++] = data_byte; // store data for raw info
   do_crc(data_byte, &crc);
-  if (wake_rx(&data_byte, to)) error_return(-4, "can't rx wake_addr");   // прием адреса
+  if (wake_rx((char*)&data_byte, to)) error_return(-4, "can't rx wake_addr");   // прием адреса
   if (data_byte & 0x80)
   {
     *addr = data_byte & 0x7F;
     do_crc(data_byte & 0x7F, &crc);
-    if (wake_rx(&data_byte, to)) error_return(-5, "can't rx wake_cmd");  // прием команды
+    if (wake_rx((char*)&data_byte, to)) error_return(-5, "can't rx wake_cmd");  // прием команды
   }
   else *addr = 0;
   *cmd = data_byte;
   do_crc(data_byte, &crc);
-  if (wake_rx(&data_byte, to)) error_return(-6, "can't rx wake_len");    // прием длины пакета
+  if (wake_rx((char*)&data_byte, to)) error_return(-6, "can't rx wake_len");    // прием длины пакета
   *real_rx = data_byte;
   do_crc(data_byte, &crc);
   for (data_ptr = 0; data_ptr < *real_rx; data_ptr++)
   {
-    if (wake_rx(&data_byte, to)) error_return(-7, "can't rx wake_data"); // прием данных
+    if (wake_rx((char*)&data_byte, to)) error_return(-7, "can't rx wake_data"); // прием данных
     data[data_ptr] = data_byte;
     do_crc(data_byte, &crc);
   }
   if (data_ptr != *real_rx) error_return(-8, "wrong wake frame len");
-  if (wake_rx(&data_byte, to)) error_return(-9, "can't rx wake_crc");    // прием CRC
+  if (wake_rx((char*)&data_byte, to)) error_return(-9, "can't rx wake_crc");    // прием CRC
   if (data_byte != crc) error_return(-10, "wrong wake_crc");
   return 0;
 }
@@ -241,7 +238,7 @@ int wake_rx_frame(int to, unsigned char *addr, unsigned char *cmd, unsigned char
 
 //-------------------------- Execute command: -------------------------------
 
-int WakeCmdExe(unsigned char addr, struct wake_cmd cmd, unsigned char *real_rx, unsigned char *data)
+int WakeCmdExe(unsigned char addr, struct wake_cmd cmd, unsigned char *real_rx, char *data)
 {
   unsigned char rx, rx_addr, rx_cmd;
   if (wake_tx_frame(addr, cmd.code, cmd.need_tx, data)) return -1; //transmit frame

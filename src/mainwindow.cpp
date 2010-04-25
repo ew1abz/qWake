@@ -15,6 +15,7 @@ MainWindow::MainWindow(QWidget *parent) :
     *sl << "Name" << "Addr" << "Cmd" << "Data" << "Enable" << "Start" << "Incoming data view";
 
     ui->setupUi(this);
+    //connected = false;
 
     ui->leWakeData->setValidator(validator);
     ui->tableWidget->setHorizontalHeaderLabels(*sl);
@@ -28,14 +29,26 @@ MainWindow::MainWindow(QWidget *parent) :
 
     ui->lePortData->setValidator(validator);
     //for (int i=0;i<20;i++) if (AccessPort(i)==1)  ui->cbxPort->addItem(QString("COM%1").arg(i));
+    ui->cbxPort->addItem("/dev/ttyS0");
     ui->cbxPort->addItem("/dev/ttyS1");
+    ui->cbxPort->addItem("/dev/ttyUSB0");
+    ui->cbxPort->addItem("/dev/ttyUSB1");
+    ui->cbxPort->addItem("COM1");
+    ui->cbxPort->addItem("COM2");
+    ui->cbxPort->addItem("COM3");
+    ui->cbxPort->addItem("COM4");
     ui->cbxPort->addItem("COM5");
+    ui->cbxPort->addItem("COM6");
+    ui->cbxPort->addItem("COM7");
     ui->cbxPort->addItem("COM8");
     ui->cbxPort->addItem("COM9");
+
+    readSettings();
 }
 
 MainWindow::~MainWindow()
 {
+    writeSettings();
     delete ui;
 }
 
@@ -49,6 +62,69 @@ void MainWindow::changeEvent(QEvent *e)
     default:
         break;
     }
+}
+
+void MainWindow::readSettings()
+{
+  QSettings settings(QSettings::IniFormat, QSettings::UserScope,"qWake", "Config");
+  QPoint pos = settings.value("pos", QPoint(200, 200)).toPoint();
+  QSize size = settings.value("size", QSize(400, 400)).toSize();
+  ui->tabWidget->setCurrentIndex(settings.value("tab").toInt());
+
+  int i= ui->cbxSpeed->findText(settings.value("speed").toString());
+  if (i) ui->cbxSpeed->setCurrentIndex(i);
+
+  ui->sbxTimeout->setValue(settings.value("timeout").toInt());
+  if (settings.value("connected").toBool())
+  {
+    int i= ui->cbxPort->findText(settings.value("port").toString());
+    if (i)
+    {
+      ui->cbxPort->setCurrentIndex(ui->cbxPort->findText(settings.value("port").toString()));
+      on_pbConnect_clicked();
+    }
+  }
+  int n = settings.beginReadArray("commands");
+  for (int i = 0; i < n; ++i)
+  {
+    settings.setArrayIndex(i);
+    newRow(i);
+    ui->tableWidget->item(i,0)->setText(settings.value("name").toString());
+    ui->tableWidget->item(i,1)->setText(settings.value("sla").toString());
+    ui->tableWidget->item(i,2)->setText(settings.value("rw").toString());
+    ui->tableWidget->item(i,3)->setText(settings.value("n").toString());
+    ui->tableWidget->item(i,4)->setText(settings.value("data").toString());
+    ((QCheckBox*)ui->tableWidget->cellWidget(i,5))->setChecked(settings.value("sel").toBool());
+  }
+  settings.endArray();
+
+  resize(size);
+  move(pos);
+}
+
+void MainWindow::writeSettings()
+{
+  QSettings settings(QSettings::IniFormat, QSettings::UserScope,"qWake", "Config");
+  settings.setValue("pos", pos());
+  settings.setValue("size", size());
+  settings.setValue("tab",ui->tabWidget->currentIndex());
+  settings.setValue("port", ui->cbxPort->currentText());
+  settings.setValue("speed", ui->cbxSpeed->currentText());
+  settings.setValue("timeout", ui->sbxTimeout->value());
+  settings.setValue("connected", port->isOpen());
+
+  settings.beginWriteArray("commands");
+  for (int i = 0; i < ui->tableWidget->rowCount(); ++i)
+  {
+    settings.setArrayIndex(i);
+    settings.setValue("name", ui->tableWidget->item(i,0)->text());
+    settings.setValue("sla", ui->tableWidget->item(i,1)->text());
+    settings.setValue("rw", ui->tableWidget->item(i,2)->text());
+    settings.setValue("n", ui->tableWidget->item(i,3)->text());
+    settings.setValue("data", ui->tableWidget->item(i,4)->text());
+    settings.setValue("sel", ((QCheckBox*)ui->tableWidget->cellWidget(i,5))->isChecked());
+  }
+  settings.endArray();
 }
 
 //---------------------------- Text2Hex: ------------------------------------
@@ -72,25 +148,9 @@ void MainWindow::Text2Hex(QString s, QByteArray *ba)
       ba->append(intToByteArray(list1.at(i).toInt(&ok, 16)));
 }
 
-int MainWindow::set_rx_to(int to)
-{
-  port->setTimeout(0,to);
-  return 0;
-}
-
-int MainWindow::tx_buffer(unsigned char* data, int size)
-{
-  return port->write((const char*)data,size);
-}
-
-int MainWindow::rx_byte (unsigned char* byte)
-{
-  return port->read((char*)byte,1);
-}
-
 void MainWindow::on_pbConnect_clicked()
 {
-  if (!connected)
+  if (!port->isOpen())
   {
     port = new QextSerialPort(ui->cbxPort->currentText());
     if (ui->cbxSpeed->currentText() == "1200") port->setBaudRate(BAUD1200);
@@ -103,22 +163,19 @@ void MainWindow::on_pbConnect_clicked()
     port->setDataBits(DATA_8);
     port->setStopBits(STOP_1);
     port->setTimeout(0,ui->sbxTimeout->value());
-    port->open(QIODevice::ReadWrite);
+    if (port->open(QIODevice::ReadWrite) == 0)
+      {ui->statusBar->showMessage(port->errorString(),0); return;}
     qDebug("is open: %d", port->isOpen());
 
-    //wake_init(0, 0, 0);
-    //wake_init(this->set_rx_to, 0, rx_byte);
-    //wake_init(set_rx_to, tx_buffer, 0);
-    wake_init(p_set_rx_to, 0, 0);
-
+    wake_init(port);
 
     ui->statusBar->showMessage("On-Line",0);
-    //ui->statusBar->addPermanentWidget(&info_bar,0);
-    //info_bar.setText(QString(info));
     ui->pbConnect->setChecked(true);
     ui->pbConnect->setText("Disconnect");
-    connected = true;
+    //connected = true;
     ui->cbxPort->setEnabled(false);
+    ui->cbxSpeed->setEnabled(false);
+    ui->sbxTimeout->setEnabled(false);
   }
   else
   {
@@ -126,41 +183,14 @@ void MainWindow::on_pbConnect_clicked()
     ui->pbConnect->setText("Connect");
     ui->pbConnect->setChecked(false);
     ui->statusBar->showMessage("Disconnected",2000);
-    //info_bar.clear();
-    connected = false;
+    //connected = false;
     ui->cbxPort->setEnabled(true);
+    ui->cbxSpeed->setEnabled(true);
+    ui->sbxTimeout->setEnabled(true);
   }
-//  char info[32];
-//  bool ok;
-//
-//  if (!connected)
-//  {
-//    if (portOpen(ui->cbxPort->currentText().toLocal8Bit()) == EXIT_FAILURE)
-//      {ui->statusBar->showMessage("portOpen ERROR", 2000); return;}
-//    portSetOptions(ui->cbxSpeed->currentText().toInt(&ok,10),0);
-//    wake_init(portWrite, portRead);
-////    if(dev->GetInfo(info) == EXIT_FAILURE) {ui->statusBar->showMessage("Get_Info ERROR", 2000); portClose(); return;}
-//    ui->statusBar->showMessage("On-Line",0);
-//    ui->statusBar->addPermanentWidget(&info_bar,0);
-//    info_bar.setText(QString(info));
-//    ui->pbConnect->setChecked(true);
-//    ui->pbConnect->setText("Disconnect");
-//    connected = true;
-//    ui->cbxPort->setEnabled(false);
-//  }
-//  else
-//  {
-//    portClose();
-//    ui->pbConnect->setText("Connect");
-//    ui->pbConnect->setChecked(false);
-//    ui->statusBar->showMessage("Disconnected",2000);
-//    info_bar.clear();
-//    connected = false;
-//    ui->cbxPort->setEnabled(true);
-//  }
 }
 
-void MainWindow::show_tx_log(unsigned char * clear_data, int size)
+void MainWindow::show_tx_log(char * clear_data, int size)
 {
   unsigned char data[518];
   int len, i;
@@ -168,7 +198,7 @@ void MainWindow::show_tx_log(unsigned char * clear_data, int size)
 
   if (ui->cbxLogLevel->currentIndex() == 0 || ui->cbxLogLevel->currentIndex() == 1) // full raw
   {
-    len = wake_get_tx_raw_buffer(data);
+    len = wake_get_tx_raw_buffer((char*)data);
     s = "<font color=#ff0000>TX: </font>";
     i = 0;
     s += QString("<font color=#c0c0c0>%1 </font>").arg(data[i++],2,16,QChar('0')); // FEND
@@ -179,7 +209,7 @@ void MainWindow::show_tx_log(unsigned char * clear_data, int size)
     // data
     s += "<font color=#ff0000>";
     for(;i<len-1;i++)
-    if (data[i] == 0xdb) // with stuffing
+    if ((unsigned char)data[i] == 0xdb) // with stuffing
         {
           if (ui->cbxLogLevel->currentIndex() == 0)
           {
@@ -212,7 +242,7 @@ void MainWindow::show_tx_log(unsigned char * clear_data, int size)
   ui->teLog->append(s.toLocal8Bit());
 }
 
-void MainWindow::show_rx_log(unsigned char * clear_data, int size)
+void MainWindow::show_rx_log(char * clear_data, int size)
 {
   unsigned char data[518];
   int len, i;
@@ -220,7 +250,7 @@ void MainWindow::show_rx_log(unsigned char * clear_data, int size)
 
   if (ui->cbxLogLevel->currentIndex() == 0 || ui->cbxLogLevel->currentIndex() == 1) // raw
   {
-    len = wake_get_rx_raw_buffer(data);
+    len = wake_get_rx_raw_buffer((char*)data);
     s = "<font color=green>RX: ";
     i = 0;
     s += QString("<font color=#c0c0c0>%1 </font>").arg(data[i++],2,16,QChar('0')); // FEND
@@ -250,16 +280,17 @@ void MainWindow::show_rx_log(unsigned char * clear_data, int size)
 
 void MainWindow::on_pbSend_clicked()
 {
-  unsigned char data[518];
+  char data[518];
   QString s;
   unsigned char addr, cmd, len;
   QByteArray ba;
   int res;
 
   Text2Hex(ui->leWakeData->text(), &ba);
-  if (res = wake_tx_frame(ui->hsbAddr->value(), ui->hsbCmd->value(), ba.size(), (unsigned char *)ba.constData()) < 0)
+  res = wake_tx_frame(ui->hsbAddr->value(), ui->hsbCmd->value(), ba.size(), ba.constData());
+  if (res < 0)
     {ui->teLog->append("wake_tx_frame error"); qDebug("%d", res); return;}
-  show_tx_log((unsigned char *)ba.constData(), ba.size());
+  show_tx_log((char *)ba.constData(), ba.size());
 
   if (wake_rx_frame(200, &addr, &cmd, &len, data) < 0)
    {ui->teLog->append("wake_rx_frame error"); return;}
@@ -278,12 +309,12 @@ void MainWindow::on_pbPortSend_clicked()
   int res;
 
   Text2Hex(ui->lePortData->text(), &ba);
-  res = portWrite((unsigned char *)ba.constData(), ba.size());
+  res = port->write(ba.constData(), ba.size());
   if (res < 0) {ui->teLog->append("portWrite error"); return;}
   if (res != ba.size()) {ui->teLog->append("portWrite len error"); return;}
 
-  s = "<font color=red>TX: ";
-  foreach(int data, ba) s += QString("%1 ").arg(data,2,16,QChar('0'));
+  s = "<font color=red>RAW TX: ";
+  foreach(unsigned char data, ba) s += QString("%1 ").arg(data,2,16,QChar('0'));
   s += "</font>";
 
   if (ui->cbxASCII->isChecked())
@@ -344,38 +375,4 @@ void MainWindow::on_toolButton_clicked()
   newRow(ui->tableWidget->rowCount());
 }
 
-void MainWindow::on_pbSetSerial_clicked()
-{
-  unsigned char data[518];
-  QString s;
-  unsigned char addr, cmd, len;
-  QByteArray ba = "\xEb\xDA\xDE\xCD";
-  int res;
 
-  on_pbConnect_clicked();
-  ui->teLog->append("Connect");
-
-  ba.append(ui->sbSerial->value() & 0xff);
-  ba.append((ui->sbSerial->value() >> 8 )& 0xff);
-  if (res = wake_tx_frame(0, 5, ba.size(), (unsigned char *)ba.constData()) < 0)
-    {ui->teLog->append("wake_tx_frame error"); qDebug("%d", res); return;}
-  if (wake_rx_frame(200, &addr, &cmd, &len, data) < 0)
-   {ui->teLog->append("wake_rx_frame error"); return;}
-
-  if (data[0] != 0)   {ui->teLog->append("set serial error"); return;}
-
-  ba.clear();
-  if (res = wake_tx_frame(0, 4, ba.size(), (unsigned char *)ba.constData()) < 0)
-    {ui->teLog->append("wake_tx_frame error"); qDebug("%d", res); return;}
-  if (wake_rx_frame(200, &addr, &cmd, &len, data) < 0)
-    {ui->teLog->append("wake_rx_frame error"); return;}
-
-  if ((data[1] != ((ui->sbSerial->value() >> 8) & 0xff)) || (data[0] != (ui->sbSerial->value() & 0xff)))
-    {ui->teLog->append("check serial error"); return;}
-
-  ui->teLog->append("Write and check Ok!");
-  ui->sbSerial->setValue(ui->sbSerial->value()+1);
-
-  on_pbConnect_clicked();
-  ui->teLog->append("Increment serial and disconnect");
-}
