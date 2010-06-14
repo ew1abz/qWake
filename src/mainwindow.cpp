@@ -1,7 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include <QDebug>
-#include "comport_lin.h"
+//#include "comport_lin.h"
 #include "wake.h"
 
 
@@ -12,7 +12,7 @@ MainWindow::MainWindow(QWidget *parent) :
     QRegExpValidator *validator = new QRegExpValidator(QRegExp("[0-9a-fA-F ]{1,}"), this);
 
     QStringList *sl = new QStringList;
-    *sl << "Name" << "Addr" << "Cmd" << "Data" << "Enable" << "Start" << "Incoming data view";
+    *sl << tr("Èìÿ") << "Addr" << "Cmd" << "Data" << "Enable" << "Start" << "Incoming data view";
 
     ui->setupUi(this);
     //connected = false;
@@ -266,13 +266,13 @@ void MainWindow::show_rx_log(char * clear_data, int size)
   else
   {
     s = "<font color=green>RX: ";
-    for(i=0;i<size;i++) s += QString("%1 ").arg(clear_data[i],2,16,QChar('0')); // data
+    for(i=0;i<size;i++) s += QString("%1 ").arg((unsigned char)clear_data[i],2,16,QChar('0')); // data
     s += "</font>";
   }
   if (ui->cbxASCII->isChecked())
   {
     s += "<font color=#0000ff>";
-    for(i=0;i<size;i++) if (clear_data[i]>=' ') s += QChar(clear_data[i]); else s += '.';
+    s += QString().fromLocal8Bit(clear_data, size);
     s += "</font>";
   }
   ui->teLog->append(s.toLocal8Bit());

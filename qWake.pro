@@ -22,6 +22,7 @@ FORMS += src/mainwindow.ui
 #win32: SOURCES += src/comport_win.cpp
 #unix: HEADERS += src/comport_lin.h
 #unix: SOURCES += src/comport_lin.cpp
+QMAKE_LIBDIR += ./qextserialport
 LIBS    += -lqextserialport
 unix:DEFINES   = _TTY_POSIX_
 win32:DEFINES  = _TTY_WIN_ QWT_DLL QT_DLL
