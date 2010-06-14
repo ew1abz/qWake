@@ -12,10 +12,11 @@ MainWindow::MainWindow(QWidget *parent) :
     QRegExpValidator *validator = new QRegExpValidator(QRegExp("[0-9a-fA-F ]{1,}"), this);
 
     QStringList *sl = new QStringList;
-    *sl << tr("Èìÿ") << "Addr" << "Cmd" << "Data" << "Enable" << "Start" << "Incoming data view";
+    *sl << "Name" << "Addr" << "Cmd" << "Data" << "Enable" << "Start" << "Incoming data view";
 
     ui->setupUi(this);
-    //connected = false;
+
+    connect(&signalMapper, SIGNAL(mapped(int)), this, SLOT(slotRun(int)));
 
     ui->leWakeData->setValidator(validator);
     ui->tableWidget->setHorizontalHeaderLabels(*sl);
@@ -70,6 +71,8 @@ void MainWindow::readSettings()
   QPoint pos = settings.value("pos", QPoint(200, 200)).toPoint();
   QSize size = settings.value("size", QSize(400, 400)).toSize();
   ui->tabWidget->setCurrentIndex(settings.value("tab").toInt());
+  ui->cbxLogLevel->setCurrentIndex(settings.value("logLevel").toInt());
+  ui->cbxASCII->setChecked(settings.value("ascii").toBool());
 
   int i= ui->cbxSpeed->findText(settings.value("speed").toString());
   if (i) ui->cbxSpeed->setCurrentIndex(i);
@@ -89,12 +92,13 @@ void MainWindow::readSettings()
   {
     settings.setArrayIndex(i);
     newRow(i);
+    ui->tableWidget->setColumnWidth(i, settings.value("width").toInt());
     ui->tableWidget->item(i,0)->setText(settings.value("name").toString());
-    ui->tableWidget->item(i,1)->setText(settings.value("sla").toString());
-    ui->tableWidget->item(i,2)->setText(settings.value("rw").toString());
-    ui->tableWidget->item(i,3)->setText(settings.value("n").toString());
-    ui->tableWidget->item(i,4)->setText(settings.value("data").toString());
-    ((QCheckBox*)ui->tableWidget->cellWidget(i,5))->setChecked(settings.value("sel").toBool());
+    ui->tableWidget->item(i,1)->setText(settings.value("addr").toString());
+    ui->tableWidget->item(i,2)->setText(settings.value("cmd").toString());
+    ui->tableWidget->item(i,3)->setText(settings.value("data").toString());
+    ((QCheckBox*)ui->tableWidget->cellWidget(i,4))->setChecked(settings.value("enable").toBool());
+    ui->tableWidget->item(i,6)->setText(settings.value("view").toString());
   }
   settings.endArray();
 
@@ -112,17 +116,20 @@ void MainWindow::writeSettings()
   settings.setValue("speed", ui->cbxSpeed->currentText());
   settings.setValue("timeout", ui->sbxTimeout->value());
   settings.setValue("connected", port->isOpen());
+  settings.setValue("logLevel", ui->cbxLogLevel->currentIndex());
+  settings.setValue("ascii", ui->cbxASCII->isChecked());
 
   settings.beginWriteArray("commands");
   for (int i = 0; i < ui->tableWidget->rowCount(); ++i)
   {
     settings.setArrayIndex(i);
+    settings.setValue("width", ui->tableWidget->columnWidth(i));
     settings.setValue("name", ui->tableWidget->item(i,0)->text());
-    settings.setValue("sla", ui->tableWidget->item(i,1)->text());
-    settings.setValue("rw", ui->tableWidget->item(i,2)->text());
-    settings.setValue("n", ui->tableWidget->item(i,3)->text());
-    settings.setValue("data", ui->tableWidget->item(i,4)->text());
-    settings.setValue("sel", ((QCheckBox*)ui->tableWidget->cellWidget(i,5))->isChecked());
+    settings.setValue("addr", ui->tableWidget->item(i,1)->text());
+    settings.setValue("cmd", ui->tableWidget->item(i,2)->text());
+    settings.setValue("data", ui->tableWidget->item(i,3)->text());
+    settings.setValue("enable", ((QCheckBox*)ui->tableWidget->cellWidget(i,4))->isChecked());
+    settings.setValue("view", ui->tableWidget->item(i,6)->text());
   }
   settings.endArray();
 }
@@ -331,48 +338,59 @@ void MainWindow::newRow(int row)
   ui->tableWidget->insertRow(row);
   ui->tableWidget->setRowHeight(row, 18);
   ui->tableWidget->verticalHeader()->setResizeMode(row, QHeaderView::Fixed);
-
+  // name
   QTableWidgetItem *item0 = new QTableWidgetItem;
   ui->tableWidget->setItem(row,0, item0);
   ui->tableWidget->item(row,0)->setText(QString("Command %1").arg(row,3,10,QChar('0')));
-
+  // addr
   QTableWidgetItem *item1 = new QTableWidgetItem;
   ui->tableWidget->setItem(row,1, item1);
   ui->tableWidget->item(row,1)->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
   ui->tableWidget->item(row,1)->setText("00");
-
+  // cmd
   QTableWidgetItem *item2 = new QTableWidgetItem;
   ui->tableWidget->setItem(row,2, item2);
   ui->tableWidget->item(row,2)->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
   ui->tableWidget->item(row,2)->setText(QString("%1").arg(row,2,16,QChar('0')));
-
+  // data
   QTableWidgetItem *item3 = new QTableWidgetItem;
   ui->tableWidget->setItem(row,3, item3);
   ui->tableWidget->item(row,3)->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
  // ui->tableWidget->item(row,3)->setFlags(Qt::ItemIsUserCheckable);
-
+  // enable
   QCheckBox *cbxSel = new QCheckBox;
   ui->tableWidget->setCellWidget(row,4,cbxSel);
-  cbxSel->setText("t");
+  //cbxSel->setText("t");
   cbxSel->setGeometry(10,0,18,18);
-
-
+  // start
   QToolButton *run = new QToolButton;
   run->setIcon(QIcon(":/Start.ico"));
   ui->tableWidget->setCellWidget(row,5,run);
 
   QTableWidgetItem *item6 = new QTableWidgetItem;
   ui->tableWidget->setItem(row,6, item6);
-
-  //signalMapper.setMapping(run, row);
-  //connect(run, SIGNAL(clicked()), &signalMapper, SLOT (map()));
+  signalMapper.setMapping(run, row);
+  connect(run, SIGNAL(clicked()), &signalMapper, SLOT (map()));
 
   ui->tableWidget->setCurrentCell(row,0);
 }
 
-void MainWindow::on_toolButton_clicked()
+void MainWindow::on_tbAddCmd_clicked()
 {
   newRow(ui->tableWidget->rowCount());
 }
 
+void MainWindow::slotRun(int row)
+{
+  //QByteArray ba;
+  bool res;
+  //QString s;
+  //char d[128];
+  unsigned char addr = ui->tableWidget->item(row,1)->text().toInt(&res,16);
+  unsigned char cmd = ui->tableWidget->item(row,2)->text().toInt(&res,16);
+  //bool sel = ((QCheckBox*)ui->tableWidget->cellWidget(i,5))->isChecked();
 
+  //Text2Hex(ui->tableWidget->item(row,4)->text(), &ba);
+
+  qDebug("addr %d cmd %d", addr, cmd);
+}

@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>2</number>
       </property>
       <widget class="QWidget" name="tab">
        <attribute name="title">
@@ -487,14 +487,14 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_5">
           <item>
-           <widget class="QToolButton" name="toolButton_2">
+           <widget class="QToolButton" name="tbInsertRow">
             <property name="text">
              <string>Insert</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QToolButton" name="toolButton">
+           <widget class="QToolButton" name="tbAddCmd">
             <property name="text">
              <string>Add</string>
             </property>
@@ -676,7 +676,7 @@
      <x>0</x>
      <y>0</y>
      <width>388</width>
-     <height>21</height>
+     <height>20</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
