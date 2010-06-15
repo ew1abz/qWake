@@ -559,7 +559,7 @@
            </spacer>
           </item>
           <item>
-           <widget class="QToolButton" name="toolButton_6">
+           <widget class="QToolButton" name="tbBatch">
             <property name="text">
              <string>Batch</string>
             </property>

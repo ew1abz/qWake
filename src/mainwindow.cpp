@@ -44,6 +44,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->cbxPort->addItem("COM8");
     ui->cbxPort->addItem("COM9");
 
+    port = new QextSerialPort();
     readSettings();
 }
 
@@ -70,15 +71,15 @@ void MainWindow::readSettings()
   QSettings settings(QSettings::IniFormat, QSettings::UserScope,"qWake", "Config");
   QPoint pos = settings.value("pos", QPoint(200, 200)).toPoint();
   QSize size = settings.value("size", QSize(400, 400)).toSize();
-  ui->tabWidget->setCurrentIndex(settings.value("tab").toInt());
-  ui->cbxLogLevel->setCurrentIndex(settings.value("logLevel").toInt());
-  ui->cbxASCII->setChecked(settings.value("ascii").toBool());
+  ui->tabWidget->setCurrentIndex(settings.value("tab", 0).toInt());
+  ui->cbxLogLevel->setCurrentIndex(settings.value("logLevel", 0).toInt());
+  ui->cbxASCII->setChecked(settings.value("ascii", true).toBool());
 
-  int i= ui->cbxSpeed->findText(settings.value("speed").toString());
+  int i= ui->cbxSpeed->findText(settings.value("speed","115200").toString());
   if (i) ui->cbxSpeed->setCurrentIndex(i);
 
-  ui->sbxTimeout->setValue(settings.value("timeout").toInt());
-  if (settings.value("connected").toBool())
+  ui->sbxTimeout->setValue(settings.value("timeout", 200).toInt());
+  if (settings.value("connected", false).toBool())
   {
     int i= ui->cbxPort->findText(settings.value("port").toString());
     if (i)
@@ -159,7 +160,7 @@ void MainWindow::on_pbConnect_clicked()
 {
   if (!port->isOpen())
   {
-    port = new QextSerialPort(ui->cbxPort->currentText());
+    port->setPortName(ui->cbxPort->currentText());
     if (ui->cbxSpeed->currentText() == "1200") port->setBaudRate(BAUD1200);
     else if (ui->cbxSpeed->currentText() == "38400") port->setBaudRate(BAUD38400);
     else if (ui->cbxSpeed->currentText() == "57600") port->setBaudRate(BAUD57600);
@@ -382,15 +383,29 @@ void MainWindow::on_tbAddCmd_clicked()
 
 void MainWindow::slotRun(int row)
 {
-  //QByteArray ba;
-  bool res;
-  //QString s;
-  //char d[128];
-  unsigned char addr = ui->tableWidget->item(row,1)->text().toInt(&res,16);
-  unsigned char cmd = ui->tableWidget->item(row,2)->text().toInt(&res,16);
-  //bool sel = ((QCheckBox*)ui->tableWidget->cellWidget(i,5))->isChecked();
+  char data[518];
+  QByteArray ba;
+  int res;
+  bool ok;
+  unsigned char addr = ui->tableWidget->item(row,1)->text().toInt(&ok,16);
+  unsigned char cmd = ui->tableWidget->item(row,2)->text().toInt(&ok,16);
+  unsigned char len;
 
-  //Text2Hex(ui->tableWidget->item(row,4)->text(), &ba);
+  Text2Hex(ui->tableWidget->item(row,3)->text(), &ba);
+  res = wake_tx_frame(addr, cmd, ba.size(), ba.constData());
+  if (res < 0)
+    {ui->teLog->append("wake_tx_frame error"); qDebug("%d", res); return;}
+  show_tx_log((char *)ba.constData(), ba.size());
 
-  qDebug("addr %d cmd %d", addr, cmd);
+  if (wake_rx_frame(200, &addr, &cmd, &len, data) < 0)
+   {ui->teLog->append("wake_rx_frame error"); return;}
+  show_rx_log(data ,len);
+}
+
+void MainWindow::on_tbBatch_clicked()
+{
+  for (int i = 0; i < ui->tableWidget->rowCount(); ++i)
+  {
+    if (((QCheckBox*)ui->tableWidget->cellWidget(i,5))->isChecked()) slotRun(i);
+  }
 }

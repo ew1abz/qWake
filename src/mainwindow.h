@@ -37,6 +37,7 @@ private:
     QSignalMapper signalMapper;
 
 private slots:
+    void on_tbBatch_clicked();
     void on_tbAddCmd_clicked();
     void on_pbPortSend_clicked();
     void on_btClear_clicked();
