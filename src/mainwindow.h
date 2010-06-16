@@ -28,17 +28,22 @@ private:
     void writeSettings();
     void readSettings();
     QextSerialPort *port;
-    //bool connected;
+    QRegExpValidator *validator;
     QLabel info_bar;
     void Text2Hex(QString s, QByteArray *ba);
     void show_tx_log(char * clear_data, int size);
     void show_rx_log(char * clear_data, int size);
     void newRow(int row);
+    void changeRows(int rowUp, int rowDown);
     QSignalMapper signalMapper;
 
 private slots:
+    void on_btAdd_clicked();
+    void on_btInsert_clicked();
+    void on_btUp_clicked();
+    void on_btDown_clicked();
+    void on_btDel_clicked();
     void on_tbBatch_clicked();
-    void on_tbAddCmd_clicked();
     void on_pbPortSend_clicked();
     void on_btClear_clicked();
     void on_pbConnect_clicked();

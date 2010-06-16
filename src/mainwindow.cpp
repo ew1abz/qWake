@@ -1,15 +1,16 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include <QDebug>
-//#include "comport_lin.h"
 #include "wake.h"
+#include "spinboxdelegate.h"
+#include "hexlineeditdelegate.h"
 
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
-    QRegExpValidator *validator = new QRegExpValidator(QRegExp("[0-9a-fA-F ]{1,}"), this);
+    validator = new QRegExpValidator(QRegExp("[0-9a-fA-F ]{1,}"), this);
 
     QStringList *sl = new QStringList;
     *sl << "Name" << "Addr" << "Cmd" << "Data" << "Enable" << "Start" << "Incoming data view";
@@ -28,7 +29,15 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->tableWidget->setColumnWidth(5,44);
     ui->tableWidget->setColumnWidth(6,180);
 
+    SpinBoxDelegate *delegate = new SpinBoxDelegate;
+    ui->tableWidget->setItemDelegateForColumn(1,delegate);
+    ui->tableWidget->setItemDelegateForColumn(2,delegate);
+
+    hexLineEditDelegate *le_delegate = new hexLineEditDelegate;
+    ui->tableWidget->setItemDelegateForColumn(3,le_delegate);
+
     ui->lePortData->setValidator(validator);
+    ui->leWakeData->setValidator(validator);
     //for (int i=0;i<20;i++) if (AccessPort(i)==1)  ui->cbxPort->addItem(QString("COM%1").arg(i));
     ui->cbxPort->addItem("/dev/ttyS0");
     ui->cbxPort->addItem("/dev/ttyS1");
@@ -238,7 +247,7 @@ void MainWindow::show_tx_log(char * clear_data, int size)
   if (ui->cbxLogLevel->currentIndex() == 2) // logic only
   {
     s = "<font color=#ff0000>TX: ";
-    for(i=0;i<size;i++) s += QString("%1 ").arg(clear_data[i],2,16,QChar('0')); // data
+    for(i=0;i<size;i++) s += QString("%1 ").arg((unsigned char)clear_data[i],2,16,QChar('0')); // data
     s += "</font>";
   }
   if (ui->cbxASCII->isChecked())
@@ -357,6 +366,7 @@ void MainWindow::newRow(int row)
   QTableWidgetItem *item3 = new QTableWidgetItem;
   ui->tableWidget->setItem(row,3, item3);
   ui->tableWidget->item(row,3)->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+  //ui->tableWidget->item(row,3)->setValidator(validator);
  // ui->tableWidget->item(row,3)->setFlags(Qt::ItemIsUserCheckable);
   // enable
   QCheckBox *cbxSel = new QCheckBox;
@@ -376,10 +386,81 @@ void MainWindow::newRow(int row)
   ui->tableWidget->setCurrentCell(row,0);
 }
 
-void MainWindow::on_tbAddCmd_clicked()
+void MainWindow::on_btInsert_clicked()
+{
+//  if (ui->tableWidget->rowCount() == 0) {newRow(0); return;}
+//  if (ui->tableWidget->currentRow() < 0) {newRow(0); return;}
+//  int n = ui->tableWidget->rowCount() - ui->tableWidget->currentRow();
+//  newRow(ui->tableWidget->rowCount());
+//  for (int i = 0; i <n ; i++) changeRows(i-1, i);
+}
+
+void MainWindow::on_btAdd_clicked()
 {
   newRow(ui->tableWidget->rowCount());
 }
+
+void MainWindow::on_btDel_clicked()
+{
+    ui->tableWidget->removeRow(ui->tableWidget->currentRow());
+}
+
+void MainWindow::changeRows(int rowUp, int rowDown)
+{
+  QStringList sd, su;
+  bool ed, eu;
+
+  sd << ui->tableWidget->item(rowDown,0)->text() \
+     << ui->tableWidget->item(rowDown,1)->text() \
+     << ui->tableWidget->item(rowDown,2)->text() \
+     << ui->tableWidget->item(rowDown,3)->text() \
+     << ui->tableWidget->item(rowDown,6)->text();
+  ed =  ((QCheckBox*)ui->tableWidget->cellWidget(rowDown,4))->isChecked();
+
+  su << ui->tableWidget->item(rowUp,0)->text() \
+     << ui->tableWidget->item(rowUp,1)->text() \
+     << ui->tableWidget->item(rowUp,2)->text() \
+     << ui->tableWidget->item(rowUp,3)->text() \
+     << ui->tableWidget->item(rowUp,6)->text();
+  eu =  ((QCheckBox*)ui->tableWidget->cellWidget(rowUp,4))->isChecked();
+
+  ui->tableWidget->item(rowUp,0)->setText(sd[0]);
+  ui->tableWidget->item(rowUp,1)->setText(sd[1]);
+  ui->tableWidget->item(rowUp,2)->setText(sd[2]);
+  ui->tableWidget->item(rowUp,3)->setText(sd[3]);
+  ui->tableWidget->item(rowUp,6)->setText(sd[4]);
+  ((QCheckBox*)ui->tableWidget->cellWidget(rowUp,4))->setChecked(ed);
+
+  ui->tableWidget->item(rowDown,0)->setText(su[0]);
+  ui->tableWidget->item(rowDown,1)->setText(su[1]);
+  ui->tableWidget->item(rowDown,2)->setText(su[2]);
+  ui->tableWidget->item(rowDown,3)->setText(su[3]);
+  ui->tableWidget->item(rowDown,6)->setText(su[4]);
+  ((QCheckBox*)ui->tableWidget->cellWidget(rowDown,4))->setChecked(eu);
+}
+
+void MainWindow::on_btUp_clicked()
+{
+  int rowDown, rowUp;
+  rowDown = ui->tableWidget->currentRow();
+  if (rowDown == 0) return;
+  rowUp = rowDown - 1;
+
+  changeRows(rowUp, rowDown);
+  ui->tableWidget->setCurrentCell(rowUp,0);
+}
+
+void MainWindow::on_btDown_clicked()
+{
+  int rowDown, rowUp;
+  rowUp = ui->tableWidget->currentRow();
+  if (rowUp == ui->tableWidget->rowCount()-1) return;
+  rowDown = rowUp + 1;
+
+  changeRows(rowUp, rowDown);
+  ui->tableWidget->setCurrentCell(rowDown,0);
+}
+
 
 void MainWindow::slotRun(int row)
 {
@@ -406,6 +487,9 @@ void MainWindow::on_tbBatch_clicked()
 {
   for (int i = 0; i < ui->tableWidget->rowCount(); ++i)
   {
-    if (((QCheckBox*)ui->tableWidget->cellWidget(i,5))->isChecked()) slotRun(i);
+    if (((QCheckBox*)ui->tableWidget->cellWidget(i,4))->isChecked()) slotRun(i);
   }
 }
+
+
+
