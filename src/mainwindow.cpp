@@ -303,6 +303,7 @@ void MainWindow::on_pbSend_clicked()
   QByteArray ba;
   int res;
 
+  if (!port->isOpen()) {ui->teLog->append("Open port first!"); return;}
   Text2Hex(ui->leWakeData->text(), &ba);
   res = wake_tx_frame(ui->hsbAddr->value(), ui->hsbCmd->value(), ba.size(), ba.constData());
   if (res < 0)
@@ -325,6 +326,7 @@ void MainWindow::on_pbPortSend_clicked()
   QString s;
   int res;
 
+  if (!port->isOpen()) {ui->teLog->append("Open port first!"); return;}
   Text2Hex(ui->lePortData->text(), &ba);
   res = port->write(ba.constData(), ba.size());
   if (res < 0) {ui->teLog->append("portWrite error"); return;}
@@ -388,11 +390,12 @@ void MainWindow::newRow(int row)
 
 void MainWindow::on_btInsert_clicked()
 {
-//  if (ui->tableWidget->rowCount() == 0) {newRow(0); return;}
-//  if (ui->tableWidget->currentRow() < 0) {newRow(0); return;}
-//  int n = ui->tableWidget->rowCount() - ui->tableWidget->currentRow();
-//  newRow(ui->tableWidget->rowCount());
-//  for (int i = 0; i <n ; i++) changeRows(i-1, i);
+  if (ui->tableWidget->rowCount() == 0) {newRow(0); return;}
+  int n = ui->tableWidget->rowCount() - ui->tableWidget->currentRow();
+  int cur = ui->tableWidget->currentRow();
+  newRow(ui->tableWidget->rowCount());
+  for (int i=0; i<n; i++) changeRows(ui->tableWidget->rowCount()-1-1-i, ui->tableWidget->rowCount()-1-i);
+  ui->tableWidget->setCurrentCell(cur,0);
 }
 
 void MainWindow::on_btAdd_clicked()
@@ -472,6 +475,7 @@ void MainWindow::slotRun(int row)
   unsigned char cmd = ui->tableWidget->item(row,2)->text().toInt(&ok,16);
   unsigned char len;
 
+  if (!port->isOpen()) {ui->teLog->append("Open port first!"); return;}
   Text2Hex(ui->tableWidget->item(row,3)->text(), &ba);
   res = wake_tx_frame(addr, cmd, ba.size(), ba.constData());
   if (res < 0)

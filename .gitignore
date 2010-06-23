@@ -5,7 +5,7 @@ tmp/
 bin/
 Makefile
 Makefile*
-*.user
+*.user*
 *.rc
 web/*
 doc/latex/*

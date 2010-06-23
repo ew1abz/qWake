@@ -187,7 +187,7 @@ int wake_rx_frame(int to, unsigned char *addr, unsigned char *cmd, unsigned char
 
   rx_index = 0;
   for (int i = 0; i < 512 && data_byte != FEND; i++)
-    if (port->read((char*)&data_byte, 1)) break;
+    if (port->read((char*)&data_byte, 1) != 1) break;
   if (data_byte != FEND) error_return(-3, "can't find FEND");
 
   rx_raw_buffer[rx_index++] = data_byte; // store data for raw info
