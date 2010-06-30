@@ -423,7 +423,7 @@
                <string>...</string>
               </property>
               <property name="icon">
-               <iconset>
+               <iconset resource="../res/res.qrc">
                 <normaloff>:/Start.ico</normaloff>:/Start.ico</iconset>
               </property>
              </widget>
@@ -545,6 +545,16 @@
         </item>
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_6">
+          <item>
+           <widget class="QLabel" name="label_9">
+            <property name="text">
+             <string>Name</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lineEditFramesetName"/>
+          </item>
           <item>
            <spacer name="horizontalSpacer_5">
             <property name="orientation">
@@ -750,9 +760,11 @@
   <customwidget>
    <class>HexSpinBox</class>
    <extends>QSpinBox</extends>
-   <header>../src/hexspinbox.h</header>
+   <header>D:\Projects\qWake\src\hexspinbox.h</header>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="../res/res.qrc"/>
+ </resources>
  <connections/>
 </ui>

@@ -179,7 +179,9 @@ void MainWindow::on_pbConnect_clicked()
     port->setParity(PAR_NONE);
     port->setDataBits(DATA_8);
     port->setStopBits(STOP_1);
-    port->setTimeout(0,ui->sbxTimeout->value());
+    //port->setTimeout(0,ui->sbxTimeout->value()); // sec, msec
+    port->setTimeout(1,200); // sec, msec
+    //if (port->open(QIODevice::ReadWrite  | QIODevice::Unbuffered) == 0)
     if (port->open(QIODevice::ReadWrite) == 0)
       {ui->statusBar->showMessage(port->errorString(),0); return;}
     qDebug("is open: %d", port->isOpen());
@@ -497,3 +499,66 @@ void MainWindow::on_tbBatch_clicked()
 
 
 
+
+void MainWindow::on_actionSave_frameset_triggered()
+{
+  QString fsName = ui->tabWidget->tabText(ui->tabWidget->currentIndex()) + ".qfs";
+  QString fileName = QFileDialog::getSaveFileName(this, tr("Save frameset to file"), fsName, tr("qWake Frameset (*.qfs)"));
+  QSettings settings(fileName, QSettings::IniFormat);
+  settings.setValue("name", ui->tabWidget->tabText(ui->tabWidget->currentIndex()));// fixme
+
+  settings.beginWriteArray("commands");
+  for (int i = 0; i < ui->tableWidget->rowCount(); ++i)
+  {
+    settings.setArrayIndex(i);
+    settings.setValue("width", ui->tableWidget->columnWidth(i));
+    settings.setValue("name", ui->tableWidget->item(i,0)->text());
+    settings.setValue("addr", ui->tableWidget->item(i,1)->text());
+    settings.setValue("cmd", ui->tableWidget->item(i,2)->text());
+    settings.setValue("data", ui->tableWidget->item(i,3)->text());
+    settings.setValue("enable", ((QCheckBox*)ui->tableWidget->cellWidget(i,4))->isChecked());
+    settings.setValue("view", ui->tableWidget->item(i,6)->text());
+  }
+  settings.endArray();
+}
+
+void MainWindow::on_lineEditFramesetName_editingFinished()
+{
+  ui->tabWidget->setTabText(ui->tabWidget->currentIndex(), ui->lineEditFramesetName->text());
+}
+
+void MainWindow::on_actionOpen_frameset_triggered()
+{
+  QString fileName = QFileDialog::getOpenFileName(this, tr("Read frameset from file"), "", tr("qWake Frameset (*.qfs)"));
+  if (fileName == "") return;
+  QSettings settings(fileName, QSettings::IniFormat);
+
+  ui->tabWidget->setTabText(ui->tabWidget->currentIndex(), settings.value("name").toString());
+  ui->lineEditFramesetName->setText(ui->tabWidget->tabText(2)); // fixme //ui->tabWidget->currentIndex()
+  while (ui->tableWidget->rowCount()) ui->tableWidget->removeRow(ui->tableWidget->rowCount()-1);
+
+  int n = settings.beginReadArray("commands");
+  for (int i = 0; i < n; ++i)
+  {
+    settings.setArrayIndex(i);
+    newRow(i);
+    ui->tableWidget->setColumnWidth(i, settings.value("width").toInt());
+    ui->tableWidget->item(i,0)->setText(settings.value("name").toString());
+    ui->tableWidget->item(i,1)->setText(settings.value("addr").toString());
+    ui->tableWidget->item(i,2)->setText(settings.value("cmd").toString());
+    ui->tableWidget->item(i,3)->setText(settings.value("data").toString());
+    ((QCheckBox*)ui->tableWidget->cellWidget(i,4))->setChecked(settings.value("enable").toBool());
+    ui->tableWidget->item(i,6)->setText(settings.value("view").toString());
+  }
+  settings.endArray();
+}
+
+void MainWindow::on_actionAbout_Qt_triggered()
+{
+  QMessageBox::aboutQt(this, "About Qt");
+}
+
+void MainWindow::on_actionAbout_triggered()
+{
+  QMessageBox::about(this, tr("About qWake"), tr("The <b>qWake</b> tool for debug Wake protocol."));
+}

@@ -6,6 +6,7 @@
 #include "wake.h"
 #include <string.h>
 #include <stdlib.h>
+#include <QDebug>
 
 //---------------------------- Constants: -----------------------------------
 
@@ -186,9 +187,18 @@ int wake_rx_frame(int to, unsigned char *addr, unsigned char *cmd, unsigned char
   unsigned char crc = CRC_INIT;            // crc
 
   rx_index = 0;
-  for (int i = 0; i < 512 && data_byte != FEND; i++)
-    if (port->read((char*)&data_byte, 1) != 1) break;
-  if (data_byte != FEND) error_return(-3, "can't find FEND");
+
+//  int numBytes = port->bytesAvailable();
+//  if(numBytes <= 0) return -1;
+  if (!port->waitForReadyRead(2000)); qDebug("2000");
+  if (port->read((char*)&data_byte, 1) != 1)
+  {qDebug("No data"); return -1;}
+  if (data_byte != FEND)
+    return -2;
+
+//  for (int i = 0; i < 512 && data_byte != FEND; i++)
+//    if (port->read((char*)&data_byte, 1) != 1) break;
+//  if (data_byte != FEND) error_return(-3, "can't find FEND");
 
   rx_raw_buffer[rx_index++] = data_byte; // store data for raw info
   do_crc(data_byte, &crc);

@@ -38,6 +38,11 @@ private:
     QSignalMapper signalMapper;
 
 private slots:
+    void on_actionAbout_triggered();
+    void on_actionAbout_Qt_triggered();
+    void on_actionOpen_frameset_triggered();
+    void on_lineEditFramesetName_editingFinished();
+    void on_actionSave_frameset_triggered();
     void on_btAdd_clicked();
     void on_btInsert_clicked();
     void on_btUp_clicked();
