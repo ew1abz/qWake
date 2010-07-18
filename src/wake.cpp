@@ -32,6 +32,7 @@
 static char tx_raw_buffer[518];
 static char rx_raw_buffer[518];
 static int real_tx;
+static int rxto = 500;
 static int rx_index;
 QextSerialPort *port;
 
@@ -87,6 +88,27 @@ static void byte_stuff(unsigned char b, int &bptr, char *buff)
 
 //------------------------------------------------------------------------------
 
+int rx_byte(char * b)
+{
+  struct timeval tv, time_end;
+
+  gettimeofday(&tv, NULL);
+  tv.tv_usec += rxto * 1000;
+  if ( tv.tv_usec > 1000000 )
+  {
+    tv.tv_sec += tv.tv_usec / 1000000;
+    tv.tv_usec %= 1000000;
+  }
+  while (1)
+  {
+    if(int n = port->read(b, 1) > 0) return(n);
+    gettimeofday(&time_end, NULL);
+    bool result = !timercmp(&time_end, &tv, <);
+    if (result) return(-3);//, "rx time out");}
+  }
+}
+
+
 ///    Rx byte with wake destuffing
 ///    \param b New rx byte
 ///    \retval  0: all fine
@@ -96,11 +118,12 @@ static void byte_stuff(unsigned char b, int &bptr, char *buff)
 ///    \note Don't update error string, because up-level functions rewrite it
 static int wake_rx(char *b, int timeout)
 {
-  if(port->read(b, 1) != 1) return(-1);
+  rxto = timeout;
+  if(rx_byte(b) != 1) return(-1);
   rx_raw_buffer[rx_index++] = *b;
   if((unsigned char)*b == FESC)
   {
-    if(port->read(b, 1) !=1) return(-2);
+    if(rx_byte(b) !=1) return(-2);
     if((unsigned char)*b == TFEND) *b = FEND;
       else if((unsigned char)*b == TFESC) *b = FESC;
         else return(-3);
@@ -190,11 +213,10 @@ int wake_rx_frame(int to, unsigned char *addr, unsigned char *cmd, unsigned char
 
 //  int numBytes = port->bytesAvailable();
 //  if(numBytes <= 0) return -1;
-  if (!port->waitForReadyRead(2000)); qDebug("2000");
-  if (port->read((char*)&data_byte, 1) != 1)
-  {qDebug("No data"); return -1;}
-  if (data_byte != FEND)
-    return -2;
+  //if (!port->waitForReadyRead(2000)) qDebug("2000");
+  if(rx_byte((char*)&data_byte) != 1) {qDebug("No data"); return -1;}
+  //if (port->read((char*)&data_byte, 1) != 1)
+  if (data_byte != FEND)  return -2;
 
 //  for (int i = 0; i < 512 && data_byte != FEND; i++)
 //    if (port->read((char*)&data_byte, 1) != 1) break;
