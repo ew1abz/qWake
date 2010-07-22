@@ -1,12 +1,8 @@
-//#include "frame.h"
-//#include "ftdidev.h"
-//#include <stdlib.h>
 //#include <string.h>
-
+//#include <stdlib.h>
+//#include <QDebug>
+#include "utils.h"
 #include "wake.h"
-#include <string.h>
-#include <stdlib.h>
-#include <QDebug>
 
 //---------------------------- Constants: -----------------------------------
 
@@ -167,7 +163,11 @@ int wake_tx_frame(unsigned char addr, unsigned char cmd, unsigned char need_tx, 
   byte_stuff(crc, index, buff);           // передача CRC
   real_tx = index;
   memcpy((char*)tx_raw_buffer,(const char *)buff,real_tx);
+  port->setRts(true);
+  Sleep(1);
   if (port->write(buff, index) != index)  error_return(-1, "ftdidev_tx_buff failed");
+  Sleep(1);
+  port->setRts(false);
   return 0;
 }
 
@@ -210,6 +210,7 @@ int wake_rx_frame(int to, unsigned char *addr, unsigned char *cmd, unsigned char
   unsigned char crc = CRC_INIT;            // crc
 
   rx_index = 0;
+  rxto = to;
 
 //  int numBytes = port->bytesAvailable();
 //  if(numBytes <= 0) return -1;

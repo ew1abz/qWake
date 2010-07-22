@@ -1,7 +1,9 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include <QDebug>
+#include <time.h>
 #include "wake.h"
+#include "utils.h"
 #include "spinboxdelegate.h"
 #include "hexlineeditdelegate.h"
 
@@ -52,6 +54,19 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->cbxPort->addItem("COM7");
     ui->cbxPort->addItem("COM8");
     ui->cbxPort->addItem("COM9");
+
+
+    statusConnect = new QLabel("Offline");
+    ui->statusBar->addPermanentWidget(statusConnect,1);
+
+    statusCycles = new QLabel("Cycles:");
+    ui->statusBar->addPermanentWidget(statusCycles,1);
+
+    statusErrors = new QLabel("Errors:");
+    ui->statusBar->addPermanentWidget(statusErrors,1);
+
+    statusTime = new QLabel("Time:");
+    ui->statusBar->addPermanentWidget(statusTime,1);
 
     port = new QextSerialPort();
     readSettings();
@@ -180,28 +195,28 @@ void MainWindow::on_pbConnect_clicked()
     port->setDataBits(DATA_8);
     port->setStopBits(STOP_1);
     //port->setTimeout(0,ui->sbxTimeout->value()); // sec, msec
-    port->setTimeout(1,200); // sec, msec
-    //if (port->open(QIODevice::ReadWrite  | QIODevice::Unbuffered) == 0)
-    if (port->open(QIODevice::ReadWrite) == 0)
-      {ui->statusBar->showMessage(port->errorString(),0); return;}
+    //port->setTimeout(1,200); // sec, msec
+    if (port->open(QIODevice::ReadWrite  | QIODevice::Unbuffered) == 0)
+    //if (port->open(QIODevice::ReadWrite) == 0)
+      {ui->teLog->append(port->errorString()); return;}
     qDebug("is open: %d", port->isOpen());
 
     wake_init(port);
 
-    ui->statusBar->showMessage("On-Line",0);
+    statusConnect->setText("On-Line");
     ui->pbConnect->setChecked(true);
     ui->pbConnect->setText("Disconnect");
-    //connected = true;
     ui->cbxPort->setEnabled(false);
     ui->cbxSpeed->setEnabled(false);
     ui->sbxTimeout->setEnabled(false);
+    //ui->statusConnect->setPixmap(QPixmap(":/images/connected_32x32.png"));
   }
   else
   {
     port->close();
     ui->pbConnect->setText("Connect");
     ui->pbConnect->setChecked(false);
-    ui->statusBar->showMessage("Disconnected",2000);
+    statusConnect->setText("Online");
     //connected = false;
     ui->cbxPort->setEnabled(true);
     ui->cbxSpeed->setEnabled(true);
@@ -312,7 +327,7 @@ void MainWindow::on_pbSend_clicked()
     {ui->teLog->append("wake_tx_frame error"); qDebug("%d", res); return;}
   show_tx_log((char *)ba.constData(), ba.size());
 
-  if (wake_rx_frame(200, &addr, &cmd, &len, data) < 0)
+  if (wake_rx_frame(ui->sbxTimeout->value(), &addr, &cmd, &len, data) < 0)
    {ui->teLog->append("wake_rx_frame error"); return;}
   show_rx_log(data ,len);
 }
@@ -476,17 +491,30 @@ void MainWindow::slotRun(int row)
   unsigned char addr = ui->tableWidget->item(row,1)->text().toInt(&ok,16);
   unsigned char cmd = ui->tableWidget->item(row,2)->text().toInt(&ok,16);
   unsigned char len;
+  struct timeval start, end;
+  long diff_time, seconds, useconds;
+
 
   if (!port->isOpen()) {ui->teLog->append("Open port first!"); return;}
   Text2Hex(ui->tableWidget->item(row,3)->text(), &ba);
+  gettimeofday(&start, NULL);
   res = wake_tx_frame(addr, cmd, ba.size(), ba.constData());
-  if (res < 0)
-    {ui->teLog->append("wake_tx_frame error"); qDebug("%d", res); return;}
+  if (res < 0)  {ui->teLog->append(QString("wake_tx_frame error: %1").arg(res)); return;}
+  res = wake_rx_frame(ui->sbxTimeout->value(), &addr, &cmd, &len, data);
+  if (res < 0)  {ui->teLog->append(QString("wake_rx_frame error: %1").arg(res)); return;}
+  gettimeofday(&end, NULL);
   show_tx_log((char *)ba.constData(), ba.size());
-
-  if (wake_rx_frame(200, &addr, &cmd, &len, data) < 0)
-   {ui->teLog->append("wake_rx_frame error"); return;}
   show_rx_log(data ,len);
+
+  seconds  = end.tv_sec  - start.tv_sec;
+  useconds = end.tv_usec - start.tv_usec;
+  diff_time = ((seconds) * 1000 + useconds/1000.0) + 0.5;
+  ui->teLog->append(QString("Time: %L1 ms").arg(diff_time));
+  statusTime->setText(QString("Time: %L1 ms").arg(diff_time));
+//  ui->teLog->append(QString("Start \tsec: %L1 \tusec: %L2").arg(start.tv_sec).arg(start.tv_usec));
+//  ui->teLog->append(QString("End \tsec: %L1 \tusec: %L2").arg(end.tv_sec).arg(end.tv_usec));
+//  ui->teLog->append(QString("Diff \tsec: %L1 \tusec: %L2").arg(seconds).arg(useconds));
+//  ui->teLog->append(QString("Time: %L1 ms").arg(0xFFFFFFFF));
 }
 
 void MainWindow::on_tbBatch_clicked()

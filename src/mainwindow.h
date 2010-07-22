@@ -14,11 +14,6 @@ class MainWindow : public QMainWindow {
 public:
     MainWindow(QWidget *parent = 0);
     ~MainWindow();
-    int set_rx_to(int to);
-    int tx_buffer(unsigned char* data, int size);
-    int rx_byte (unsigned char* byte);
-    int (MainWindow::*p_set_rx_to)(int);
-
 
 protected:
     void changeEvent(QEvent *e);
@@ -36,6 +31,10 @@ private:
     void newRow(int row);
     void changeRows(int rowUp, int rowDown);
     QSignalMapper signalMapper;
+    QLabel *statusTime;
+    QLabel *statusConnect;
+    QLabel *statusErrors;
+    QLabel *statusCycles;
 
 private slots:
     void on_actionAbout_triggered();

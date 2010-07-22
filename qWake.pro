@@ -13,11 +13,13 @@ RESOURCES = res/res.qrc
 SOURCES += src/main.cpp \
     src/mainwindow.cpp \
     src/wake.cpp \
+    src/utils.cpp \
     src/hexspinbox.cpp \
     src/spinboxdelegate.cpp \
     src/hexlineeditdelegate.cpp
 HEADERS += src/mainwindow.h \
     src/wake.h \
+    src/utils.h \
     src/spinboxdelegate.h \
     src/hexspinbox.h \
     src/hexlineeditdelegate.h
