@@ -1,0 +1,33 @@
+[General]
+name=2010
+
+[commands]
+1\width=100
+1\name=Sound
+1\addr=00
+1\cmd=21
+1\data=1f 00 f0 00
+1\enable=false
+1\view=
+2\width=40
+2\name=Sound test
+2\addr=00
+2\cmd=22
+2\data=
+2\enable=false
+2\view=
+3\width=40
+3\name=Key beep
+3\addr=00
+3\cmd=23
+3\data=
+3\enable=false
+3\view=
+4\width=180
+4\name=Error beep
+4\addr=00
+4\cmd=24
+4\data=
+4\enable=false
+4\view=
+size=4

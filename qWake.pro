@@ -6,10 +6,10 @@ TARGET = qWake
 TEMPLATE = app
 VERSION = 0.0.1
 RESOURCES = res/res.qrc
-#OBJECTS_DIR = tmp
-#UI_DIR = tmp
-#MOC_DIR = tmp
-#RCC_DIR = tmp
+OBJECTS_DIR = tmp
+UI_DIR = tmp
+MOC_DIR = tmp
+RCC_DIR = tmp
 SOURCES += src/main.cpp \
     src/mainwindow.cpp \
     src/wake.cpp \
