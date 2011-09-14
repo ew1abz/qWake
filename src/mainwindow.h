@@ -3,7 +3,7 @@
 
 #include <QtGui>
 #include "hexspinbox.h"
-#include "qextserialport/qextserialport.h"
+#include "../qextserialport/qextserialport.h"
 
 namespace Ui {
     class MainWindow;

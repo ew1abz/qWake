@@ -1,7 +1,7 @@
 #ifndef WAKE_H
 #define WAKE_H
 
-#include "qextserialport/qextserialport.h"
+#include "../qextserialport/qextserialport.h"
 
 
 struct wake_cmd

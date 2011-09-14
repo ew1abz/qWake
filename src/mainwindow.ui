@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="tab">
        <attribute name="title">
@@ -764,7 +764,7 @@
   <customwidget>
    <class>HexSpinBox</class>
    <extends>QSpinBox</extends>
-   <header>../qWake/src/hexspinbox.h</header>
+   <header>../src/hexspinbox.h</header>
   </customwidget>
  </customwidgets>
  <resources>
