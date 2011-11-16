@@ -164,9 +164,9 @@ int wake_tx_frame(unsigned char addr, unsigned char cmd, unsigned char need_tx, 
   real_tx = index;
   memcpy((char*)tx_raw_buffer,(const char *)buff,real_tx);
   port->setRts(true);
-  Sleep(1);
+  //Sleep(1);
   if (port->write(buff, index) != index)  error_return(-1, "ftdidev_tx_buff failed");
-  Sleep(1);
+  //Sleep(1);
   port->setRts(false);
   return 0;
 }

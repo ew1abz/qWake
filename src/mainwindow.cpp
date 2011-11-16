@@ -216,7 +216,7 @@ void MainWindow::on_pbConnect_clicked()
     port->close();
     ui->pbConnect->setText("Connect");
     ui->pbConnect->setChecked(false);
-    statusConnect->setText("Online");
+    statusConnect->setText("Off-Line");
     //connected = false;
     ui->cbxPort->setEnabled(true);
     ui->cbxSpeed->setEnabled(true);
@@ -509,7 +509,7 @@ void MainWindow::slotRun(int row)
   seconds  = end.tv_sec  - start.tv_sec;
   useconds = end.tv_usec - start.tv_usec;
   diff_time = ((seconds) * 1000 + useconds/1000.0) + 0.5;
-  ui->teLog->append(QString("Time: %L1 ms").arg(diff_time));
+  //i->teLog->append(QString("Time: %L1 ms").arg(diff_time));
   statusTime->setText(QString("Time: %L1 ms").arg(diff_time));
 //  ui->teLog->append(QString("Start \tsec: %L1 \tusec: %L2").arg(start.tv_sec).arg(start.tv_usec));
 //  ui->teLog->append(QString("End \tsec: %L1 \tusec: %L2").arg(end.tv_sec).arg(end.tv_usec));
@@ -519,10 +519,20 @@ void MainWindow::slotRun(int row)
 
 void MainWindow::on_tbBatch_clicked()
 {
+  struct timeval start, end;
+  long diff_time, seconds, useconds;
+
+  gettimeofday(&start, NULL);
   for (int i = 0; i < ui->tableWidget->rowCount(); ++i)
   {
     if (((QCheckBox*)ui->tableWidget->cellWidget(i,4))->isChecked()) slotRun(i);
   }
+  gettimeofday(&end, NULL);
+
+  seconds  = end.tv_sec  - start.tv_sec;
+  useconds = end.tv_usec - start.tv_usec;
+  diff_time = ((seconds) * 1000 + useconds/1000.0) + 0.5;
+  statusTime->setText(QString("Time: %L1 ms").arg(diff_time));
 }
 
 
