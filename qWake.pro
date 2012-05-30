@@ -1,8 +1,8 @@
 # -------------------------------------------------
 # Project created by QtCreator 2010-01-11T15:22:49
 # -------------------------------------------------
-#TARGET = bin/qWake
-TARGET = qWake
+unix:TARGET = bin-linux/qWake
+win32:TARGET = qWake
 TEMPLATE = app
 VERSION = 0.0.1
 RESOURCES = res/res.qrc
