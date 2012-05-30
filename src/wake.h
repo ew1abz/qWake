@@ -3,7 +3,6 @@
 
 #include "../qextserialport/qextserialport.h"
 
-
 struct wake_cmd
   {
   char name[16];         // for error messages
@@ -14,6 +13,7 @@ struct wake_cmd
   };
 
 void wake_init (QextSerialPort *p);
+void wakeSetMonitorMode(bool mode);
 int wake_tx_frame(unsigned char addr, unsigned char cmd, unsigned char need_tx, const char *data);
 int wake_rx_frame(int to, unsigned char *addr, unsigned char *cmd, unsigned char *real_rx, char *data);
 int wake_get_tx_raw_buffer(char * buf);

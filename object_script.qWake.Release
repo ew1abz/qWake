@@ -1,0 +1,14 @@
+INPUT(
+./tmp/main.o
+./tmp/mainwindow.o
+./tmp/wake.o
+./tmp/utils.o
+./tmp/hexspinbox.o
+./tmp/spinboxdelegate.o
+./tmp/hexlineeditdelegate.o
+./tmp/moc_mainwindow.o
+./tmp/moc_spinboxdelegate.o
+./tmp/moc_hexspinbox.o
+./tmp/moc_hexlineeditdelegate.o
+./tmp/qrc_res.o
+);

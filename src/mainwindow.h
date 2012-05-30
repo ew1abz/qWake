@@ -53,6 +53,7 @@ private slots:
     void on_pbConnect_clicked();
     void on_pbSend_clicked();
     void slotRun(int);
+    void on_cbxMonitorMode_clicked();
 };
 
 #endif // MAINWINDOW_H

@@ -31,6 +31,13 @@ static int real_tx;
 static int rxto = 500;
 static int rx_index;
 QextSerialPort *port;
+static bool monitorMode = false;
+
+void wakeSetMonitorMode(bool mode)
+{
+  monitorMode = mode;
+}
+
 
 //---------------------------- Constants: -----------------------------------
 
@@ -86,22 +93,25 @@ static void byte_stuff(unsigned char b, int &bptr, char *buff)
 
 int rx_byte(char * b)
 {
-  struct timeval tv, time_end;
+  struct timeval time_over;
+  int n;
 
-  gettimeofday(&tv, NULL);
-  tv.tv_usec += rxto * 1000;
-  if ( tv.tv_usec > 1000000 )
+  // calculate time_over value
+  gettimeofday(&time_over, NULL);
+  time_over.tv_usec += rxto * 1000;
+  if ( time_over.tv_usec > 1000000 )
   {
-    tv.tv_sec += tv.tv_usec / 1000000;
-    tv.tv_usec %= 1000000;
+    time_over.tv_sec += time_over.tv_usec / 1000000;
+    time_over.tv_usec %= 1000000;
   }
-  while (1)
+  do
   {
-    if(int n = port->read(b, 1) > 0) return(n);
-    gettimeofday(&time_end, NULL);
-    bool result = !timercmp(&time_end, &tv, <);
-    if (result) return(-3);//, "rx time out");}
-  }
+    struct timeval time_cur;
+    n = port->read(b, 1);
+    gettimeofday(&time_cur, NULL);
+    if (!timercmp(&time_cur, &time_over, <)) return(-1); // rx time out
+  } while (n <= 0);
+  return n;
 }
 
 
@@ -208,6 +218,7 @@ int wake_rx_frame(int to, unsigned char *addr, unsigned char *cmd, unsigned char
   int data_ptr;                            // pointer to data buffer
   unsigned char data_byte;                 // recieved byte
   unsigned char crc = CRC_INIT;            // crc
+  int n;
 
   rx_index = 0;
   rxto = to;
@@ -215,38 +226,49 @@ int wake_rx_frame(int to, unsigned char *addr, unsigned char *cmd, unsigned char
 //  int numBytes = port->bytesAvailable();
 //  if(numBytes <= 0) return -1;
   //if (!port->waitForReadyRead(2000)) qDebug("2000");
-  if(rx_byte((char*)&data_byte) != 1) {qDebug("No data"); return -1;}
-  //if (port->read((char*)&data_byte, 1) != 1)
-  if (data_byte != FEND)  return -2;
-
-//  for (int i = 0; i < 512 && data_byte != FEND; i++)
-//    if (port->read((char*)&data_byte, 1) != 1) break;
-//  if (data_byte != FEND) error_return(-3, "can't find FEND");
-
-  rx_raw_buffer[rx_index++] = data_byte; // store data for raw info
-  do_crc(data_byte, &crc);
-  if (wake_rx((char*)&data_byte, to)) error_return(-4, "can't rx wake_addr");   // прием адреса
-  if (data_byte & 0x80)
+  if (monitorMode)
   {
-    *addr = data_byte & 0x7F;
-    do_crc(data_byte & 0x7F, &crc);
-    if (wake_rx((char*)&data_byte, to)) error_return(-5, "can't rx wake_cmd");  // прием команды
+    do
+    {
+      n = rx_byte((char*)&data_byte);
+      if (n == 1) rx_raw_buffer[rx_index++] = data_byte;
+    } while (n>0);
   }
-  else *addr = 0;
-  *cmd = data_byte;
-  do_crc(data_byte, &crc);
-  if (wake_rx((char*)&data_byte, to)) error_return(-6, "can't rx wake_len");    // прием длины пакета
-  *real_rx = data_byte;
-  do_crc(data_byte, &crc);
-  for (data_ptr = 0; data_ptr < *real_rx; data_ptr++)
+  else
   {
-    if (wake_rx((char*)&data_byte, to)) error_return(-7, "can't rx wake_data"); // прием данных
-    data[data_ptr] = data_byte;
+    port->flush();
+    if(rx_byte((char*)&data_byte) != 1) {qDebug("No data"); return -1;}
+    if (data_byte != FEND)  return -2;
+
+    ////  for (int i = 0; i < 512 && data_byte != FEND; i++)
+    ////    if (port->read((char*)&data_byte, 1) != 1) break;
+    ////  if (data_byte != FEND) error_return(-3, "can't find FEND");
+
+    rx_raw_buffer[rx_index++] = data_byte; // store data for raw info
     do_crc(data_byte, &crc);
+    if (wake_rx((char*)&data_byte, to)) error_return(-4, "can't rx wake_addr");   // прием адреса
+    if (data_byte & 0x80)
+    {
+      *addr = data_byte & 0x7F;
+      do_crc(data_byte & 0x7F, &crc);
+      if (wake_rx((char*)&data_byte, to)) error_return(-5, "can't rx wake_cmd");  // прием команды
+    }
+    else *addr = 0;
+    *cmd = data_byte;
+    do_crc(data_byte, &crc);
+    if (wake_rx((char*)&data_byte, to)) error_return(-6, "can't rx wake_len");    // прием длины пакета
+    *real_rx = data_byte;
+    do_crc(data_byte, &crc);
+    for (data_ptr = 0; data_ptr < *real_rx; data_ptr++)
+    {
+      if (wake_rx((char*)&data_byte, to)) error_return(-7, "can't rx wake_data"); // прием данных
+      data[data_ptr] = data_byte;
+      do_crc(data_byte, &crc);
+    }
+    if (data_ptr != *real_rx) error_return(-8, "wrong wake frame len");
+    if (wake_rx((char*)&data_byte, to)) error_return(-9, "can't rx wake_crc");    // прием CRC
+    if (data_byte != crc) error_return(-10, "wrong wake_crc");
   }
-  if (data_ptr != *real_rx) error_return(-8, "wrong wake frame len");
-  if (wake_rx((char*)&data_byte, to)) error_return(-9, "can't rx wake_crc");    // прием CRC
-  if (data_byte != crc) error_return(-10, "wrong wake_crc");
   return 0;
 }
 

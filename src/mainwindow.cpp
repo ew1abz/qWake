@@ -185,10 +185,16 @@ void MainWindow::on_pbConnect_clicked()
   if (!port->isOpen())
   {
     port->setPortName(ui->cbxPort->currentText());
-    if (ui->cbxSpeed->currentText() == "1200") port->setBaudRate(BAUD1200);
+    if      (ui->cbxSpeed->currentText() == "1200") port->setBaudRate(BAUD1200);
+    else if (ui->cbxSpeed->currentText() == "2400") port->setBaudRate(BAUD2400);
+    else if (ui->cbxSpeed->currentText() == "4800") port->setBaudRate(BAUD4800);
+    else if (ui->cbxSpeed->currentText() == "9600") port->setBaudRate(BAUD9600);
+    else if (ui->cbxSpeed->currentText() == "19200") port->setBaudRate(BAUD19200);
     else if (ui->cbxSpeed->currentText() == "38400") port->setBaudRate(BAUD38400);
     else if (ui->cbxSpeed->currentText() == "57600") port->setBaudRate(BAUD57600);
     else if (ui->cbxSpeed->currentText() == "115200") port->setBaudRate(BAUD115200);
+    else QMessageBox::critical(this, "Sorry", "Speed not supported");
+
 
     port->setFlowControl(FLOW_OFF);
     port->setParity(PAR_NONE);
@@ -296,18 +302,24 @@ void MainWindow::show_rx_log(char * clear_data, int size)
     for(;i<len-1;i++) s += QString("%1 ").arg(data[i],2,16,QChar('0')); // data
     s += "</font>";
     s += QString("<font color=#808080>%1 </font>").arg(data[len-1],2,16,QChar('0')); // crc
+    if (ui->cbxASCII->isChecked())
+    {
+      s += "<font color=#0000ff>";
+      s += QString().fromLocal8Bit((const char *)data, len);
+      s += "</font>";
+    }
   }
   else
   {
     s = "<font color=green>RX: ";
     for(i=0;i<size;i++) s += QString("%1 ").arg((unsigned char)clear_data[i],2,16,QChar('0')); // data
     s += "</font>";
-  }
-  if (ui->cbxASCII->isChecked())
-  {
-    s += "<font color=#0000ff>";
-    s += QString().fromLocal8Bit(clear_data, size);
-    s += "</font>";
+    if (ui->cbxASCII->isChecked())
+    {
+      s += "<font color=#0000ff>";
+      s += QString().fromLocal8Bit(clear_data, size);
+      s += "</font>";
+    }
   }
   ui->teLog->append(s.toLocal8Bit());
 }
@@ -500,11 +512,11 @@ void MainWindow::slotRun(int row)
   gettimeofday(&start, NULL);
   res = wake_tx_frame(addr, cmd, ba.size(), ba.constData());
   if (res < 0)  {ui->teLog->append(QString("wake_tx_frame error: %1").arg(res)); return;}
+  show_tx_log((char *)ba.constData(), ba.size());
   res = wake_rx_frame(ui->sbxTimeout->value(), &addr, &cmd, &len, data);
+  show_rx_log(data ,len);
   if (res < 0)  {ui->teLog->append(QString("wake_rx_frame error: %1").arg(res)); return;}
   gettimeofday(&end, NULL);
-  show_tx_log((char *)ba.constData(), ba.size());
-  show_rx_log(data ,len);
 
   seconds  = end.tv_sec  - start.tv_sec;
   useconds = end.tv_usec - start.tv_usec;
@@ -599,4 +611,9 @@ void MainWindow::on_actionAbout_Qt_triggered()
 void MainWindow::on_actionAbout_triggered()
 {
   QMessageBox::about(this, tr("About qWake"), tr("The <b>qWake</b> tool for debug Wake protocol."));
+}
+
+void MainWindow::on_cbxMonitorMode_clicked()
+{
+  wakeSetMonitorMode(ui->cbxMonitorMode->isChecked());
 }

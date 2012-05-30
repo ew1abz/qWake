@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="tab">
        <attribute name="title">
@@ -60,10 +60,10 @@
                <bool>true</bool>
               </property>
               <property name="editable">
-               <bool>false</bool>
+               <bool>true</bool>
               </property>
               <property name="currentIndex">
-               <number>7</number>
+               <number>0</number>
               </property>
               <item>
                <property name="text">
@@ -103,21 +103,6 @@
               <item>
                <property name="text">
                 <string>115200</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>230400</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>460800</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>921600</string>
                </property>
               </item>
              </widget>
@@ -646,9 +631,9 @@
          </widget>
         </item>
         <item>
-         <widget class="QCheckBox" name="checkBox_2">
+         <widget class="QCheckBox" name="cbxMonitorMode">
           <property name="enabled">
-           <bool>false</bool>
+           <bool>true</bool>
           </property>
           <property name="statusTip">
            <string>Show all data from port</string>
