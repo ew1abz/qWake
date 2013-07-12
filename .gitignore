@@ -7,6 +7,5 @@ Makefile
 Makefile*
 *.user*
 *.rc
-web/*
 doc/latex/*
 !doc/latex/*.pdf
