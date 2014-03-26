@@ -1,12 +1,10 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include <QDebug>
 #include <time.h>
 #include "wake.h"
 #include "utils.h"
 #include "spinboxdelegate.h"
 #include "hexlineeditdelegate.h"
-
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -54,7 +52,6 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->cbxPort->addItem("COM7");
     ui->cbxPort->addItem("COM8");
     ui->cbxPort->addItem("COM9");
-
 
     statusConnect = new QLabel("Offline");
     ui->statusBar->addPermanentWidget(statusConnect,1);
@@ -164,20 +161,18 @@ QByteArray intToByteArray(int value)
 {
   QByteArray ba;
   ba.append(value);
-  if ((value >> 8) & 0xff) ba.append(value >> 8);
-  if ((value >> 16) & 0xff) ba.append(value >> 16);
-  if ((value >> 24) & 0xff) ba.append(value >> 24);
+  if (value > 0xff) ba.append(value >> 8);
+  if (value > 0xffff) ba.append(value >> 16);
+  if (value > 0xffffff) ba.append(value >> 24);
   return ba;
 }
-
 
 void MainWindow::Text2Hex(QString s, QByteArray *ba)
 {
     bool ok;
     QStringList list1 = s.split(" ", QString::SkipEmptyParts);
     list1 = list1.filter(QRegExp("^[0-9a-fA-F]{1,8}$"));
-    for (int i=0;i<list1.size();i++)
-      ba->append(intToByteArray(list1.at(i).toInt(&ok, 16)));
+    for (int i=0; i<list1.size(); i++) ba->append(intToByteArray(list1.at(i).toInt(&ok, 16)));
 }
 
 void MainWindow::on_pbConnect_clicked()
@@ -194,7 +189,6 @@ void MainWindow::on_pbConnect_clicked()
     else if (ui->cbxSpeed->currentText() == "57600") port->setBaudRate(BAUD57600);
     else if (ui->cbxSpeed->currentText() == "115200") port->setBaudRate(BAUD115200);
     else QMessageBox::critical(this, "Sorry", "Speed not supported");
-
 
     port->setFlowControl(FLOW_OFF);
     port->setParity(PAR_NONE);
@@ -493,7 +487,6 @@ void MainWindow::on_btDown_clicked()
   ui->tableWidget->setCurrentCell(rowDown,0);
 }
 
-
 void MainWindow::slotRun(int row)
 {
   char data[518];
@@ -514,8 +507,8 @@ void MainWindow::slotRun(int row)
   if (res < 0)  {ui->teLog->append(QString("wake_tx_frame error: %1").arg(res)); return;}
   show_tx_log((char *)ba.constData(), ba.size());
   res = wake_rx_frame(ui->sbxTimeout->value(), &addr, &cmd, &len, data);
-  show_rx_log(data ,len);
   if (res < 0)  {ui->teLog->append(QString("wake_rx_frame error: %1").arg(res)); return;}
+  show_rx_log(data ,len);
   gettimeofday(&end, NULL);
 
   seconds  = end.tv_sec  - start.tv_sec;
@@ -546,9 +539,6 @@ void MainWindow::on_tbBatch_clicked()
   diff_time = ((seconds) * 1000 + useconds/1000.0) + 0.5;
   statusTime->setText(QString("Time: %L1 ms").arg(diff_time));
 }
-
-
-
 
 void MainWindow::on_actionSave_frameset_triggered()
 {
