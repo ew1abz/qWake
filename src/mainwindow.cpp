@@ -157,22 +157,25 @@ void MainWindow::writeSettings()
 }
 
 //---------------------------- Text2Hex: ------------------------------------
-QByteArray intToByteArray(int value)
+QByteArray textToByteArray(QString text)
 {
   QByteArray ba;
+  bool ok;
+  int value = text.toInt(&ok, 16);
   ba.append(value);
-  if (value > 0xff) ba.append(value >> 8);
-  if (value > 0xffff) ba.append(value >> 16);
-  if (value > 0xffffff) ba.append(value >> 24);
+  if (value > 0xff) ba.append(value >> 8); else if (text.length() > 2) ba.append((char)0);
+  if (value > 0xffff) ba.append(value >> 16);  else if (text.length() > 4) ba.append((char)0);
+  if (value > 0xffffff) ba.append(value >> 24);  else if (text.length() > 6) ba.append((char)0);
   return ba;
 }
 
 void MainWindow::Text2Hex(QString s, QByteArray *ba)
 {
-    bool ok;
     QStringList list1 = s.split(" ", QString::SkipEmptyParts);
     list1 = list1.filter(QRegExp("^[0-9a-fA-F]{1,8}$"));
-    for (int i=0; i<list1.size(); i++) ba->append(intToByteArray(list1.at(i).toInt(&ok, 16)));
+    for (int i=0; i<list1.size(); i++)
+      ba->append(textToByteArray(list1.at(i)));
+      //      ba->append(intToByteArray(list1.at(i).toInt(&ok, 16)));
 }
 
 void MainWindow::on_pbConnect_clicked()
